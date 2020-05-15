@@ -12,11 +12,6 @@ struct ssfdata {
 	float r, g, b;
 };
 
-struct powerdata {
-	float w;
-	float v;
-};
-
 struct channeldata {
 	unsigned p;	//x pixel coordinate
 	float v; 	//max value
@@ -99,7 +94,7 @@ std::string string_format(const std::string fmt, ...)
 
 void err(std::string msg)
 {
-	std::cout << msg << std::endl;
+	fprintf(stderr,"%s\n",msg.c_str());
 	fflush(stdout);
 	exit(1);
 }
@@ -123,7 +118,7 @@ std::vector<ssfdata> getData(std::vector<std::string> lines)
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
 		ssfdata d;
 		std::vector<std::string> tokens = split(*line, ",");
-		if (tokens.size() < 4) err("Error: line does not contain sufficient number of values");
+		if (tokens.size() < 4) err(string_format("Error: line does not contain sufficient number of values (%s)",(*line).c_str()));
 		d.w = atoi(tokens[0].c_str());
 		d.r = atof(tokens[1].c_str());
 		d.g = atof(tokens[2].c_str());
@@ -133,16 +128,17 @@ std::vector<ssfdata> getData(std::vector<std::string> lines)
 	return data;
 }
 
-std::vector<powerdata> getPowerData(std::vector<std::string> lines)
+std::map<int, float> getPowerData(std::vector<std::string> lines)
 {
-	std::vector<powerdata> data;
+	std::map<int, float> data;
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
-		powerdata d;
+		float v;
+		int w;
 		std::vector<std::string> tokens = split(*line, ",");
-		if (tokens.size() < 2) err("Error: line does not contain sufficient number of values");
-		d.w = atoi(tokens[0].c_str());
-		d.v = atof(tokens[1].c_str());
-		data.push_back(d);
+		if (tokens.size() < 2) err(string_format("Error: line does not contain sufficient number of values (%s)",(*line).c_str()));
+		w = atoi(tokens[0].c_str());
+		v = atof(tokens[1].c_str());
+		data[w] = v;
 	}
 	return data;
 }
@@ -300,17 +296,56 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 
 void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 {
+	std::vector<ssfdata> specdata = getData(getFile(f));
 	FILE *c = fopen(calibrationfile.c_str(), "r");
 	if (c == NULL) err(string_format("Error: power calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
-	std::vector<powerdata> calibdata = getPowerData(caliblines);
+	std::map<int, float> calibdata = getPowerData(caliblines);
 
-	//ToDo: magic...
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		//ToDo: interpolate between available values
+		if (calibdata.find((*dat).w) == calibdata.end()) err(string_format("Error: power calibration data not available for %dnm.",(*dat).w));
+		float cab = calibdata[(*dat).w];
+		(*dat).r /= cab;
+		(*dat).g /= cab;
+		(*dat).b /= cab;
+		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+	}
+		
+
+}
+
+void ssf_normalize(FILE *f)
+{
+	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<channeldata> max =  channelMaxes(specdata);
+	float maxval = 0.0;
+	for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
+		if ((*ch).v > maxval) maxval = (*ch).v;
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		(*dat).r = (*dat).r / maxval;
+		(*dat).g = (*dat).g / maxval;
+		(*dat).b = (*dat).b / maxval;
+		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
+	}
+}
+
+void ssf_intervalize(FILE *f, int lower, int upper, int interval)
+{
+	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::map<int,ssfdata> sd;
+	//ToDo: median of available values at the same wavelength
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) 
+		sd[(int) (*dat).w] = *dat;
+	
+	for (unsigned i = lower; i<=upper; i+=interval)
+		printf("%d,%f,%f,%f\n", i, sd[i].r, sd[i].g, sd[i].b);
+	
 }
 
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
-//./ssftool extract DSG_4583-spectrum.csv | ./ssftool transpose | ./ssftool wavelengthcalibrate <(./ssftool extract DSG_4582-calibration.csv | ./ssftool transpose) blue=437,green=546,red=611
+//./ssftool extract DSG_4583-spectrum.csv | ./ssftool transpose | ./ssftool wavelengthcalibrate <(./ssftool extract DSG_4582-calibration.csv | ./ssftool transpose) blue=437,green=546,red=611 | ./ssftool intervalize 400,730,5 | ./ssftool powercalibrate Dedolight_5nm.csv | ./ssftool normalize
 
 int main(int argc, char ** argv)
 {
@@ -384,8 +419,38 @@ int main(int argc, char ** argv)
 			calibfile = std::string(argv[3]);
 		}
 		else err("Error: wrong number of parameters for powercalibrate");
+		if (f == NULL) err("Error: data file not found.");
 
 		ssf_powercalibrate(f, calibfile);
+		fclose(f);
+	}
+	else if (operation == "normalize") {
+		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err("Error: data file not found.");
+		ssf_normalize(f);
+		fclose(f);
+	}
+	else if (operation == "intervalize") {
+		std::string range;
+		if (argc == 3) {
+			f = stdin; 
+			range = std::string(argv[2]);
+		}
+		else if (argc == 4) {
+			f = fopen(argv[2], "r"); 
+			range = std::string(argv[3]);
+		}
+
+		else err("Error: wrong number of parameters for intervalize");
+		if (f == NULL) err("Error: data file not found.");
+		
+		std::vector<std::string> r = split(range, ",");
+		if (r.size() < 3) err("Error: not enough parameters in the range specification.");
+		int lower = atoi(r[0].c_str());
+		int upper = atoi(r[1].c_str());
+		int interval = atoi(r[2].c_str());
+		
+		ssf_intervalize(f, lower, upper, interval);
 		fclose(f);
 	}
 	else printf("Error: unrecognized operation.\n"); fflush(stdout);
