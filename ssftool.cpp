@@ -8,14 +8,14 @@
 
 
 struct ssfdata {
-	unsigned w; 
+	float w; 
 	float r, g, b;
 };
 
 struct channeldata {
 	unsigned p;	//x pixel coordinate
 	float v; 	//max value
-	int w;		//assigned wavelength
+	float w;	//assigned wavelength
 	float s; 	//slope, for calculating other wavelengths
 };
 
@@ -95,6 +95,7 @@ std::string string_format(const std::string fmt, ...)
 void err(std::string msg)
 {
 	std::cout << msg << std::endl;
+	fflush(stdout);
 	exit(1);
 }
 
@@ -136,9 +137,9 @@ std::vector<channeldata> channelMaxes(std::vector<ssfdata> data)
 		if (data[i].g > gmax.v) {gmax.v = data[i].g; gmax.p =  i;}
 		if (data[i].b > bmax.v) {bmax.v = data[i].b; bmax.p =  i;}
 	}
-	max.push_back(rmax);
-	max.push_back(gmax);
 	max.push_back(bmax);
+	max.push_back(gmax);
+	max.push_back(rmax);
 	return max;
 }
 
@@ -205,40 +206,79 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	FILE *c = fopen(calibrationfile.c_str(), "r");
 	if (c == NULL) err(string_format("Error: calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
+	fclose(c);
 	caliblines = channel_extract(caliblines);
 	caliblines = data_transpose(caliblines);
 	std::vector<ssfdata> calibdata = getData(caliblines);
 	std::vector<channeldata> maxes =  channelMaxes(calibdata);
 	
-	(redwavelength != 0) ? maxes[0].w = redwavelength : maxes[0].w = 0;
+	//put wavelengths in maxes:
+	(redwavelength != 0) ? maxes[2].w = redwavelength : maxes[2].w = 0;
 	(greenwavelength != 0) ? maxes[1].w = greenwavelength : maxes[1].w = 0;
-	(bluewavelength != 0) ? maxes[2].w = bluewavelength : maxes[2].w = 0;
+	(bluewavelength != 0) ? maxes[0].w = bluewavelength : maxes[0].w = 0;
 	
+	//get rid of unused maxes:
 	std::vector<channeldata> max;
 	for (std::vector<channeldata>::iterator ch = maxes.begin(); ch != maxes.end(); ++ch)
 		if ((*ch).w != 0) max.push_back(*ch);
 
+	//three is better, puts anchor at a middle max...
 	if (max.size() < 2) err("Error: need at least two channels");
+
+	//calculate slopes:
+	for (unsigned i=0; i<max.size()-1; i++) 
+		max[i].s = (float) (max[i+1].w - max[i].w) / (float) (max[i+1].p - max[i].p);
+	max[max.size()-1].s = max[max.size()-2].s;
+
+	//calculate a single slope as the mean of the individual slopes:
+	float slope = 0.0;
+	for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
+		slope += (*ch).s;
+	slope /= max.size();
 	
 	std::vector<ssfdata> specdata = getData(getFile(f));
-	
-	for (unsigned i=max.size()-1; i>0; i--) 
-		//max[i].s = ((float) max[i].p - (float) max[i-1].p) / ((float) max[i].w - (float) max[i-1].w);
-		max[i].s =  ((float) max[i].w - (float) max[i-1].w) / ((float) max[i].p - (float) max[i-1].p);
-	//max[0].s = ((float) max[1].p - (float) max[0].p) / ((float) max[1].w - (float) max[0].w);
-	max[0].s = ((float) max[1].w - (float) max[0].w) / ((float) max[1].p - (float) max[0].p);
 
-	
-	if (redwavelength != 0) specdata[max[0].p].w = redwavelength;
+	//set the calibration anchors in the data:
+	if (redwavelength != 0) specdata[max[2].p].w = redwavelength;
 	if (greenwavelength != 0) specdata[max[1].p].w = greenwavelength;
-	if (bluewavelength != 0) specdata[max[2].p].w = bluewavelength;
-	
-	//for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
-	//	printf("%d,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+	if (bluewavelength != 0) specdata[max[0].p].w = bluewavelength;
 
-	//printf("bluewavelength:%d greenwavelength:%d redwavelength:%d\n", bluewavelength,greenwavelength,redwavelength);
-	for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
-		printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (*ch).w, (*ch).s); 
+/*	this code produces discontinuities at the anchor points...
+	for (unsigned i = 0; i < max.size(); i++) {
+		unsigned b;
+		i == 0 ? b = 0 : b = max[i-1].p;
+		//printf("max[i].p:%d b:%d\n", max[i].p,b);
+		for (unsigned j = max[i].p-1; j > b; j--) {
+			//specdata[j].w = specdata[j+1].w - max[i].s;
+			specdata[j].w = specdata[j+1].w - slope;
+			
+		}
+	}
+*/
+
+	//compute wavelengths for each line, from a single anchor point:
+
+	//int anchor = max[max.size()-1].p; //last max p
+	int anchor = max[max.size()-2].p; //middle max p
+
+	for (int i=anchor-1; i>=0; i--)
+		specdata[i].w = specdata[i+1].w - slope;
+
+	for (unsigned i=anchor+1; i<specdata.size(); i++)
+		//specdata[i].w = specdata[i-1].w + max[max.size()-1].s;  //use with discontinuity code...
+		specdata[i].w = specdata[i-1].w + slope;
+
+	//production data;
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
+		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+
+	//debug data:
+	//for (unsigned i=0; i<specdata.size(); i++)
+	//	printf("%d:%f,%f,%f,%f\n", i, specdata[i].w, specdata[i].r, specdata[i].g, specdata[i].b);
+
+	//debug maxes;
+	//for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
+	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 }
 
 
@@ -249,25 +289,29 @@ int main(int argc, char ** argv)
 	if (argc <= 1) err("Usage: ssftool <operation> [<datafile>] [parameters...]"); 
 	std::string operation = std::string(argv[1]);
 	
-	
-	
-	if (f == NULL) err("file not found.");
-	
 	if (operation == "list") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err("Error: data file not found.");
 		ssf_list(f);
+		fclose(f);
 	}
 	else if (operation == "extract") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err("Error: data file not found.");
 		ssf_extract(f);
+		fclose(f);
 	}
 	else if (operation == "transpose") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err("Error: data file not found.");
 		ssf_transpose(f);
+		fclose(f);
 	}
 	else if (operation == "channelmaxes") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err("Error: data file not found.");
 		ssf_channelmaxes(f);
+		fclose(f);
 	}
 	else if (operation == "wavelengthcalibrate") {
 		std::string calibfile;
@@ -283,7 +327,10 @@ int main(int argc, char ** argv)
 			wavelength = split(std::string(argv[4]), ",");
 		}
 		else err("Error: wrong number of parameters for wavelengthcalibrate");
+
+		if (f == NULL) err("Error: data file not found.");
 		
+		//blue=437,green=546,red=611 - debug parameters
 		int redw=0, greenw=0, bluew=0;
 		for (unsigned i=0; i<wavelength.size(); i++) {
 			std::vector<std::string> nameval = split(wavelength[i], "=");
@@ -294,9 +341,10 @@ int main(int argc, char ** argv)
 		}
 
 		ssf_wavelengthcalibrate(f, calibfile, bluew, greenw, redw);
+		fclose(f);
 	}
-	else printf("Error: unrecognized operation.");
+	else printf("Error: unrecognized operation.\n"); fflush(stdout);
 	
-	fclose(f);
+	
 
 }
