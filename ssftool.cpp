@@ -12,6 +12,11 @@ struct ssfdata {
 	float r, g, b;
 };
 
+struct powerdata {
+	float w;
+	float v;
+};
+
 struct channeldata {
 	unsigned p;	//x pixel coordinate
 	float v; 	//max value
@@ -128,6 +133,20 @@ std::vector<ssfdata> getData(std::vector<std::string> lines)
 	return data;
 }
 
+std::vector<powerdata> getPowerData(std::vector<std::string> lines)
+{
+	std::vector<powerdata> data;
+	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
+		powerdata d;
+		std::vector<std::string> tokens = split(*line, ",");
+		if (tokens.size() < 2) err("Error: line does not contain sufficient number of values");
+		d.w = atoi(tokens[0].c_str());
+		d.v = atof(tokens[1].c_str());
+		data.push_back(d);
+	}
+	return data;
+}
+
 std::vector<channeldata> channelMaxes(std::vector<ssfdata> data)
 {
 	std::vector<channeldata> max;
@@ -204,7 +223,7 @@ void ssf_channelmaxes(FILE *f)
 void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength)
 {
 	FILE *c = fopen(calibrationfile.c_str(), "r");
-	if (c == NULL) err(string_format("Error: calibration file %s not found.",calibrationfile.c_str()));
+	if (c == NULL) err(string_format("Error: wavelength calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
 	std::vector<ssfdata> calibdata = getData(caliblines);
@@ -279,6 +298,17 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 }
 
+void ssf_powercalibrate(FILE *f, std::string calibrationfile)
+{
+	FILE *c = fopen(calibrationfile.c_str(), "r");
+	if (c == NULL) err(string_format("Error: power calibration file %s not found.",calibrationfile.c_str()));
+	std::vector<std::string> caliblines = getFile(c);
+	fclose(c);
+	std::vector<powerdata> calibdata = getPowerData(caliblines);
+
+	//ToDo: magic...
+}
+
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
 //./ssftool extract DSG_4583-spectrum.csv | ./ssftool transpose | ./ssftool wavelengthcalibrate <(./ssftool extract DSG_4582-calibration.csv | ./ssftool transpose) blue=437,green=546,red=611
 
@@ -341,6 +371,21 @@ int main(int argc, char ** argv)
 		}
 
 		ssf_wavelengthcalibrate(f, calibfile, bluew, greenw, redw);
+		fclose(f);
+	}
+	else if (operation == "powercalibrate") {
+		std::string calibfile;
+		if (argc == 3) {
+			f = stdin; 
+			calibfile = std::string(argv[2]);
+		}
+		else if (argc == 4) {
+			f = fopen(argv[2], "r"); 
+			calibfile = std::string(argv[3]);
+		}
+		else err("Error: wrong number of parameters for powercalibrate");
+
+		ssf_powercalibrate(f, calibfile);
 		fclose(f);
 	}
 	else printf("Error: unrecognized operation.\n"); fflush(stdout);
