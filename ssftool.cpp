@@ -207,8 +207,6 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	if (c == NULL) err(string_format("Error: calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
-	caliblines = channel_extract(caliblines);
-	caliblines = data_transpose(caliblines);
 	std::vector<ssfdata> calibdata = getData(caliblines);
 	std::vector<channeldata> maxes =  channelMaxes(calibdata);
 	
@@ -281,6 +279,8 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 }
 
+// here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
+//./ssftool extract DSG_4583-spectrum.csv | ./ssftool transpose | ./ssftool wavelengthcalibrate <(./ssftool extract DSG_4582-calibration.csv | ./ssftool transpose) blue=437,green=546,red=611
 
 int main(int argc, char ** argv)
 {
