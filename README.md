@@ -41,3 +41,8 @@ The following operators are supported:
 - powercalibrate [file] calibrationfile: Applies per-wavelength power compensation from a file with this line format: wavelength,compensation.  The application is an arithmetic division.  Determining this data requires a calibrated spectrometer; data for common bulb types can be found on the internet.  For now, the wavelength lookup is "exact match"; a future enhancement will be to interpolate values where there's not an exact match.
 - intervalize [file] lower,upper,interval: Turns the pixel-oriented measurements into a proper interval between a lower and upper bound.
 - normalize [file]: Normalizes the r,g,b values to the range 0.0 - 1.0, with the maximum value among all three channels.
+
+## Building ssftool
+
+ssftool is a C++ program, any recent gcc will compile it.  ssftool has no particular library dependencies.  A Makefile is included, `make` will build the executable.  `sudo make install` will copy ssftool to /usr/local/bin.  If you're using Windows, MSYS2 should compile, install, and run ssftool per these instructions; any other environment is left as an exercise for the student... :D
+
