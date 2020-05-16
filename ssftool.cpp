@@ -357,7 +357,7 @@ void ssf_dcamprofjson(FILE *f, std::string cameraname)
 
 	printf("\t\"camera_name\": \"%s\",\n\n",cameraname.c_str());
 
-	printf("\t\"bands\": [ ");
+	printf("\t\"ssf_bands\": [ ");
 	printf("%s",w[0].c_str());
 	for (unsigned i=1; i<b.size(); i++) printf(", %s",w[i].c_str());
 	printf(" ],\n\n");
