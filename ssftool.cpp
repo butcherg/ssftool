@@ -103,11 +103,12 @@ std::vector<std::string> getFile(FILE *f)
 {
 	char buffer[256000];
 	std::vector<std::string> lines;
+	fgets(buffer,256000, f);
 	while (!feof(f)) {
-		fgets(buffer,256000, f);
 		std::string line = std::string(buffer);
 		line.erase(line.find_last_not_of(" \n\r\t")+1);
 		lines.push_back(line);
+		fgets(buffer,256000, f);
 	}
 	return lines;
 }
@@ -305,15 +306,13 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		//ToDo: interpolate between available values
-		if (calibdata.find((*dat).w) == calibdata.end()) err(string_format("Error: power calibration data not available for %dnm.",(*dat).w));
+		if (calibdata.find((*dat).w) == calibdata.end()) err(string_format("Error: power calibration data not available for %dnm.",(int) (*dat).w));
 		float cab = calibdata[(*dat).w];
 		(*dat).r /= cab;
 		(*dat).g /= cab;
 		(*dat).b /= cab;
 		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
 	}
-		
-
 }
 
 void ssf_normalize(FILE *f)
@@ -342,6 +341,43 @@ void ssf_intervalize(FILE *f, int lower, int upper, int interval)
 	for (unsigned i = lower; i<=upper; i+=interval)
 		printf("%d,%f,%f,%f\n", i, sd[i].r, sd[i].g, sd[i].b);
 	
+}
+
+void ssf_dcamprofjson(FILE *f, std::string cameraname)
+{
+	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<std::string> w, r, g, b;
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		w.push_back(string_format("%d", (int) (*dat).w));
+		r.push_back(string_format("%f", (*dat).r));
+		g.push_back(string_format("%f", (*dat).g));
+		b.push_back(string_format("%f", (*dat).b));
+	}
+	printf("{\n");
+
+	printf("\t\"camera_name\": \"%s\",\n\n",cameraname.c_str());
+
+	printf("\t\"bands\": [ ");
+	printf("%s",w[0].c_str());
+	for (unsigned i=1; i<b.size(); i++) printf(", %s",w[i].c_str());
+	printf(" ],\n\n");
+
+	printf("\t\"red_ssf\": [ ");
+	printf("%s",r[0].c_str());
+	for (unsigned i=1; i<r.size(); i++) printf(", %s",r[i].c_str());
+	printf(" ],\n\n");
+
+	printf("\t\"green_ssf\": [ ");
+	printf("%s",g[0].c_str());
+	for (unsigned i=1; i<r.size(); i++) printf(", %s",g[i].c_str());
+	printf(" ],\n\n");
+
+	printf("\t\"blue_ssf\": [ ");
+	printf("%s",b[0].c_str());
+	for (unsigned i=1; i<r.size(); i++) printf(", %s",b[i].c_str());
+	printf(" ]\n\n");
+
+	printf("}\n");
 }
 
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
@@ -453,7 +489,23 @@ int main(int argc, char ** argv)
 		ssf_intervalize(f, lower, upper, interval);
 		fclose(f);
 	}
-	else printf("Error: unrecognized operation.\n"); fflush(stdout);
+	else if (operation == "dcamprofjson") {
+		std::string cameraname;
+		if (argc == 3) {
+			f = stdin; 
+			cameraname = std::string(argv[2]);
+		}
+		else if (argc == 4) {
+			f = fopen(argv[2], "r"); 
+			cameraname = std::string(argv[3]);
+		}
+
+		else err("Error: wrong number of parameters for dcamprofjson");
+		if (f == NULL) err("Error: data file not found.");
+		ssf_dcamprofjson(f, cameraname);
+		fclose(f);
+	}
+	else printf("%s", string_format("Error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
 	
 	
 
