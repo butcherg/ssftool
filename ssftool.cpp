@@ -214,7 +214,7 @@ void ssf_channelmaxes(FILE *f)
 	std::vector<std::string> lines = getFile(f);
 	std::vector<ssfdata> data = getData(lines);
 	std::vector<channeldata> max =  channelMaxes(data);
-	printf("red:%f,%d;green:%f,%d;blue:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
+	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
 }
 
 void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength)
