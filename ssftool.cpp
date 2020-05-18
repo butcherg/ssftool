@@ -120,7 +120,7 @@ std::vector<ssfdata> getData(std::vector<std::string> lines)
 		if ((*line)[0] == '#') continue; //ignore comment lines
 		ssfdata d;
 		std::vector<std::string> tokens = split(*line, ",");
-		if (tokens.size() < 4) err(string_format("Error: line does not contain sufficient number of values (%s)",(*line).c_str()));
+		if (tokens.size() < 4) err(string_format("getData error: line does not contain sufficient number of values (%s)",(*line).c_str()));
 		d.w = atoi(tokens[0].c_str());
 		d.r = atof(tokens[1].c_str());
 		d.g = atof(tokens[2].c_str());
@@ -137,7 +137,7 @@ std::map<int, float> getPowerData(std::vector<std::string> lines)
 		float v;
 		int w;
 		std::vector<std::string> tokens = split(*line, ",");
-		if (tokens.size() < 2) err(string_format("Error: line does not contain sufficient number of values (%s)",(*line).c_str()));
+		if (tokens.size() < 2) err(string_format("getPowerData error: line does not contain sufficient number of values (%s)",(*line).c_str()));
 		w = atoi(tokens[0].c_str());
 		v = atof(tokens[1].c_str());
 		data[w] = v;
@@ -221,7 +221,7 @@ void ssf_channelmaxes(FILE *f)
 void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength)
 {
 	FILE *c = fopen(calibrationfile.c_str(), "r");
-	if (c == NULL) err(string_format("Error: wavelength calibration file %s not found.",calibrationfile.c_str()));
+	if (c == NULL) err(string_format("wavelengthcallibrate error: wavelength calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
 	std::vector<ssfdata> calibdata = getData(caliblines);
@@ -238,7 +238,7 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 		if ((*ch).w != 0) max.push_back(*ch);
 
 	//three is better, puts anchor at a middle max...
-	if (max.size() < 2) err("Error: need at least two channels");
+	if (max.size() < 2) err("wavelengthcalibrate error: need at least two channels");
 
 	//calculate slopes:
 	for (unsigned i=0; i<max.size()-1; i++) 
@@ -300,14 +300,14 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 {
 	std::vector<ssfdata> specdata = getData(getFile(f));
 	FILE *c = fopen(calibrationfile.c_str(), "r");
-	if (c == NULL) err(string_format("Error: power calibration file %s not found.",calibrationfile.c_str()));
+	if (c == NULL) err(string_format("powercalibrate error: power calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
 	std::map<int, float> calibdata = getPowerData(caliblines);
 
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		//ToDo: interpolate between available values
-		if (calibdata.find((*dat).w) == calibdata.end()) err(string_format("Error: power calibration data not available for %dnm.",(int) (*dat).w));
+		if (calibdata.find((*dat).w) == calibdata.end()) err(string_format("powercalibrate warning: power calibration data not available for %dnm.",(int) (*dat).w));
 		float cab = calibdata[(*dat).w];
 		(*dat).r /= cab;
 		(*dat).g /= cab;
@@ -399,19 +399,19 @@ int main(int argc, char ** argv)
 	}
 	else if (operation == "extract") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
-		if (f == NULL) err("Error: data file not found.");
+		if (f == NULL)  err(string_format("extract error: data file not found: %s",argv[2]));
 		ssf_extract(f);
 		fclose(f);
 	}
 	else if (operation == "transpose") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
-		if (f == NULL) err("Error: data file not found.");
+		if (f == NULL) err(string_format("transpose error: data file not found: %s",argv[2]));
 		ssf_transpose(f);
 		fclose(f);
 	}
 	else if (operation == "channelmaxes") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
-		if (f == NULL) err("Error: data file not found.");
+		if (f == NULL)  err(string_format("channelmaxes error: data file not found: %s",argv[2]));
 		ssf_channelmaxes(f);
 		fclose(f);
 	}
@@ -428,9 +428,8 @@ int main(int argc, char ** argv)
 			calibfile = std::string(argv[3]);
 			wavelength = split(std::string(argv[4]), ",");
 		}
-		else err("Error: wrong number of parameters for wavelengthcalibrate");
-
-		if (f == NULL) err("Error: data file not found.");
+		else err(string_format("wavelengthcalibrate error: wrong number of parameters: %d",argc));
+		if (f == NULL) err(string_format("wavelengthcalibrate error: data file not found: %s",argv[2]));
 		
 		//blue=437,green=546,red=611 - debug parameters
 		int redw=0, greenw=0, bluew=0;
@@ -439,7 +438,7 @@ int main(int argc, char ** argv)
 			if (nameval[0] == "red") redw = atoi(nameval[1].c_str());
 			else if (nameval[0] == "green") greenw = atoi(nameval[1].c_str());
 			else if (nameval[0] == "blue") bluew = atoi(nameval[1].c_str());
-			else err("Error: bad wavelength parameter");
+			else err(string_format("wavelengthcalibrage error: bad wavelength parameter",nameval[0].c_str()));
 		}
 
 		ssf_wavelengthcalibrate(f, calibfile, bluew, greenw, redw);
@@ -455,15 +454,15 @@ int main(int argc, char ** argv)
 			f = fopen(argv[2], "r"); 
 			calibfile = std::string(argv[3]);
 		}
-		else err("Error: wrong number of parameters for powercalibrate");
-		if (f == NULL) err("Error: data file not found.");
+		else err(string_format("powercalibrate error: wrong number of parameters: %d",argc));
+		if (f == NULL) err(string_format("powercalibrate error: data file not found: %s",argv[2]));
 
 		ssf_powercalibrate(f, calibfile);
 		fclose(f);
 	}
 	else if (operation == "normalize") {
 		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
-		if (f == NULL) err("Error: data file not found.");
+		if (f == NULL) err(string_format("normalize error: data file not found: %s",argv[2]));
 		ssf_normalize(f);
 		fclose(f);
 	}
@@ -478,11 +477,11 @@ int main(int argc, char ** argv)
 			range = std::string(argv[3]);
 		}
 
-		else err("Error: wrong number of parameters for intervalize");
+		else err(string_format("intervalize error: wrong number of parameters: %d",argc));
 		if (f == NULL) err("Error: data file not found.");
 		
 		std::vector<std::string> r = split(range, ",");
-		if (r.size() < 3) err("Error: not enough parameters in the range specification.");
+		if (r.size() < 3) err("intervalize error: not enough parameters in the range specification:"+range);
 		int lower = atoi(r[0].c_str());
 		int upper = atoi(r[1].c_str());
 		int interval = atoi(r[2].c_str());
@@ -498,15 +497,16 @@ int main(int argc, char ** argv)
 		}
 		else if (argc == 4) {
 			f = fopen(argv[2], "r"); 
+			if (f == NULL) err(string_format("dcamprofjson error: file not found: %s",argv[2]));
 			cameraname = std::string(argv[3]);
 		}
 
-		else err("Error: wrong number of parameters for dcamprofjson");
+		else err(string_format("dcamprofjson error: wrong number of parameters: %d", argc));
 		if (f == NULL) err("Error: data file not found.");
 		ssf_dcamprofjson(f, cameraname);
 		fclose(f);
 	}
-	else printf("%s", string_format("Error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
+	else printf("%s", string_format("ssf error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
 	
 	
 
