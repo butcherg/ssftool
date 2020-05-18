@@ -117,6 +117,7 @@ std::vector<ssfdata> getData(std::vector<std::string> lines)
 {
 	std::vector<ssfdata> data;
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
+		if ((*line)[0] == '#') continue; //ignore comment lines
 		ssfdata d;
 		std::vector<std::string> tokens = split(*line, ",");
 		if (tokens.size() < 4) err(string_format("Error: line does not contain sufficient number of values (%s)",(*line).c_str()));
