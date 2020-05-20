@@ -306,9 +306,17 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 	std::map<int, float> calibdata = getPowerData(caliblines);
 
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
-		//ToDo: interpolate between available values
-		if (calibdata.find((*dat).w) == calibdata.end()) err(string_format("powercalibrate warning: power calibration data not available for %dnm.",(int) (*dat).w));
-		float cab = calibdata[(*dat).w];
+		float cab;
+		if (calibdata.find((*dat).w) != calibdata.end()) {  //exact match 
+			cab = calibdata[(*dat).w];
+		}
+		else {  //interpolate
+			auto upper = calibdata.lower_bound((*dat).w);
+			auto lower = upper--;
+			float mult = (float) ((*dat).w - lower->first) / (float)(upper->first - lower->first);
+			cab = lower->second + (upper->second - lower->second) * mult;
+		}
+		
 		(*dat).r /= cab;
 		(*dat).g /= cab;
 		(*dat).b /= cab;
