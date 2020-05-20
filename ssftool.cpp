@@ -245,12 +245,6 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 		max[i].s = (float) (max[i+1].w - max[i].w) / (float) (max[i+1].p - max[i].p);
 	max[max.size()-1].s = max[max.size()-2].s;
 
-	//calculate a single slope as the mean of the individual slopes:
-	float slope = 0.0;
-	for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
-		slope += (*ch).s;
-	slope /= max.size();
-	
 	std::vector<ssfdata> specdata = getData(getFile(f));
 
 	//set the calibration anchors in the data:
@@ -258,40 +252,33 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	if (greenwavelength != 0) specdata[max[1].p].w = greenwavelength;
 	if (bluewavelength != 0) specdata[max[0].p].w = bluewavelength;
 
-/*	this code produces discontinuities at the anchor points...
-	for (unsigned i = 0; i < max.size(); i++) {
-		unsigned b;
-		i == 0 ? b = 0 : b = max[i-1].p;
-		//printf("max[i].p:%d b:%d\n", max[i].p,b);
-		for (unsigned j = max[i].p-1; j > b; j--) {
-			//specdata[j].w = specdata[j+1].w - max[i].s;
-			specdata[j].w = specdata[j+1].w - slope;
-			
-		}
+
+	//Wavelength Assignment:
+	//1. place wavelengths for each interval between calibration max rgb x-s 
+	for (unsigned i=0; i<max.size()-1; i++) {
+		for (unsigned j=max[i].p; j<max[i+1].p; j++)
+			specdata[j+1].w = specdata[j].w + max[i].s;
 	}
-*/
+	
+	//2. place wavelengths from the highest max rgb x to the upper end of the spectrum
+	for (unsigned j=max[max.size()-1].p; j<specdata.size()-1; j++)
+		specdata[j+1].w = specdata[j].w + max[max.size()-1].s;
+	specdata[specdata.size()-1].w = specdata[specdata.size()-2].w + max[max.size()-1].s;
+	
+	//3. place wavelengthsfrom the lowst max rgbx to the lower end of the spectrum
+	for (unsigned j=max[0].p; j>0; j--)
+		specdata[j-1].w = specdata[j].w - max[0].s;
+	specdata[0].w - specdata[1].w - max[0].s;
 
-	//compute wavelengths for each line, from a single anchor point:
-
-	//int anchor = max[max.size()-1].p; //last max p
-	int anchor = max[max.size()-2].p; //middle max p
-
-	for (int i=anchor-1; i>=0; i--)
-		specdata[i].w = specdata[i+1].w - slope;
-
-	for (unsigned i=anchor+1; i<specdata.size(); i++)
-		//specdata[i].w = specdata[i-1].w + max[max.size()-1].s;  //use with discontinuity code...
-		specdata[i].w = specdata[i-1].w + slope;
-
-	//production data;
+	//print production data;
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
 		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
 
-	//debug data:
+	//print debug data, use in place of 'print production data' above:
 	//for (unsigned i=0; i<specdata.size(); i++)
 	//	printf("%d:%f,%f,%f,%f\n", i, specdata[i].w, specdata[i].r, specdata[i].g, specdata[i].b);
 
-	//debug maxes;
+	//print debug maxes;
 	//for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
 	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 }
