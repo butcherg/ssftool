@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ "$#" -lt 2 ]; then
+	echo "Usage: $ ./ssfgen.sh [-s spectrumfile] [-c calbrationfile] [-m markers] [-i interval] [-p powerfile] [-o outputfilespec]]"
+	exit
+fi
+
 set -e
 
 #defaults:
