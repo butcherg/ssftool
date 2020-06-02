@@ -102,7 +102,6 @@ void err(std::string msg)
 
 std::vector<std::string> getFile(FILE *f)
 {
-printf("enter getFile()...\n");
 	fd_set set;
 	struct timeval timeout;
 	char buffer[256000];
@@ -217,6 +216,32 @@ std::vector<std::string> data_transpose(std::vector<std::string> lines)
 	return l;
 }
 
+std::vector<ssfdata> ssf_wavelengthcalibrate(std::vector<ssfdata> specdata, std::vector<channeldata> markers)
+{
+	//Wavelength Assignment:
+	//1. place marker wavelenghts in data:
+	for (std::vector<channeldata>::iterator mkr = markers.begin(); mkr != markers.end(); ++mkr)
+		specdata[(*mkr).p].w = (*mkr).w;
+
+	//2. place wavelengths for each interval between calibration marker x-s 
+	for (unsigned i=0; i<markers.size()-1; i++) {
+		for (unsigned j=markers[i].p; j<markers[i+1].p; j++)
+			specdata[j+1].w = specdata[j].w + markers[i].s;
+	}
+	
+	//3. place wavelengths from the highest marker rgb x to the upper end of the spectrum
+	for (unsigned j=markers[markers.size()-1].p; j<specdata.size()-1; j++)
+		specdata[j+1].w = specdata[j].w + markers[markers.size()-1].s;
+	specdata[specdata.size()-1].w = specdata[specdata.size()-2].w + markers[markers.size()-1].s;
+	
+	//4. place wavelengthsfrom the lowest marker to the lower end of the spectrum
+	for (unsigned j=markers[0].p; j>0; j--)
+		specdata[j-1].w = specdata[j].w - markers[0].s;
+	specdata[0].w - specdata[1].w - markers[0].s;
+	
+	return specdata;
+}
+
 
 // Operations:
 
@@ -251,59 +276,38 @@ void ssf_channelmaxes(FILE *f)
 	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
 }
 
-void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength, int redx=0, int greenx=0, int bluex=0)
+
+void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength) //, int redx=0, int greenx=0, int bluex=0)
 {
 	FILE *c = fopen(calibrationfile.c_str(), "r");
 	if (c == NULL) err(string_format("wavelengthcallibrate error: wavelength calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
 	std::vector<ssfdata> calibdata = getData(caliblines);
-	std::vector<channeldata> maxes =  channelMaxes(calibdata);
-	if (redx != 0) maxes[2].p = redx;
-	if (greenx != 0) maxes[1].p = greenx;
-	if (bluex != 0)  maxes[0].p = bluex;
+	std::vector<channeldata> markers =  channelMaxes(calibdata);
 	
-	//put wavelengths in maxes:
-	(redwavelength != 0) ? maxes[2].w = redwavelength : maxes[2].w = 0;
-	(greenwavelength != 0) ? maxes[1].w = greenwavelength : maxes[1].w = 0;
-	(bluewavelength != 0) ? maxes[0].w = bluewavelength : maxes[0].w = 0;
+	//put wavelengths in markers:
+	(redwavelength != 0) ? markers[2].w = redwavelength : markers[2].w = 0;
+	(greenwavelength != 0) ? markers[1].w = greenwavelength : markers[1].w = 0;
+	(bluewavelength != 0) ? markers[0].w = bluewavelength : markers[0].w = 0;
 	
-	//get rid of unused maxes:
-	std::vector<channeldata> max;
-	for (std::vector<channeldata>::iterator ch = maxes.begin(); ch != maxes.end(); ++ch)
-		if ((*ch).w != 0) max.push_back(*ch);
+	//get rid of unused markers:
+	std::vector<channeldata> marker;
+	for (std::vector<channeldata>::iterator ch = markers.begin(); ch != markers.end(); ++ch)
+		if ((*ch).w != 0) marker.push_back(*ch);
 
-	//three is better, puts anchor at a middle max...
-	if (max.size() < 2) err("wavelengthcalibrate error: need at least two channels");
+	//three is better, puts anchor at a middle marker...
+	if (marker.size() < 2) err("wavelengthcalibrate error: need at least two channels");
 
 	//calculate slopes:
-	for (unsigned i=0; i<max.size()-1; i++) 
-		max[i].s = (float) (max[i+1].w - max[i].w) / (float) (max[i+1].p - max[i].p);
-	max[max.size()-1].s = max[max.size()-2].s;
+	for (unsigned i=0; i<marker.size()-1; i++) 
+		marker[i].s = (float) (marker[i+1].w - marker[i].w) / (float) (marker[i+1].p - marker[i].p);
+	marker[marker.size()-1].s = marker[marker.size()-2].s;
 
 	std::vector<ssfdata> specdata = getData(getFile(f));
-
-	//set the calibration anchors in the data:
-	if (redwavelength != 0) specdata[max[2].p].w = redwavelength;
-	if (greenwavelength != 0) specdata[max[1].p].w = greenwavelength;
-	if (bluewavelength != 0) specdata[max[0].p].w = bluewavelength;
-
-	//Wavelength Assignment:
-	//1. place wavelengths for each interval between calibration max rgb x-s 
-	for (unsigned i=0; i<max.size()-1; i++) {
-		for (unsigned j=max[i].p; j<max[i+1].p; j++)
-			specdata[j+1].w = specdata[j].w + max[i].s;
-	}
 	
-	//2. place wavelengths from the highest max rgb x to the upper end of the spectrum
-	for (unsigned j=max[max.size()-1].p; j<specdata.size()-1; j++)
-		specdata[j+1].w = specdata[j].w + max[max.size()-1].s;
-	specdata[specdata.size()-1].w = specdata[specdata.size()-2].w + max[max.size()-1].s;
-	
-	//3. place wavelengthsfrom the lowst max rgbx to the lower end of the spectrum
-	for (unsigned j=max[0].p; j>0; j--)
-		specdata[j-1].w = specdata[j].w - max[0].s;
-	specdata[0].w - specdata[1].w - max[0].s;
+	//do the wavelength assignment:
+	specdata = ssf_wavelengthcalibrate(specdata, marker);
 
 	//print production data;
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
@@ -513,7 +517,6 @@ int main(int argc, char ** argv)
 	else if (operation == "averagefiles") { //produces a r,g,b dataset of the average of the input files
 		unsigned count = 0;
 		std::vector<ssfdata> data = getData(getFile(stdin));
-printf("averagefiles: stdin data: %ld\n",data.size());
 		if (data.size() > 0) count++;
 		for (unsigned i = 2; i<argc; i++) {
 			f = fopen(argv[i], "r");
