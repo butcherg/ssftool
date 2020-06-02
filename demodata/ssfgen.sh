@@ -1,10 +1,5 @@
 #!/bin/bash
 
-if [ "$#" -lt 2 ]; then
-	echo "Usage: $ ./ssfgen.sh [-s spectrumfile] [-c calbrationfile] [-m markers] [-i interval] [-p powerfile] [-o outputfilespec]]"
-	exit
-fi
-
 set -e
 
 #defaults:
@@ -19,7 +14,7 @@ if test -f "ssfgen.conf"; then
 fi
 
 #override defaults/ssfgen.conf with command line parameters:
-while getopts s:c:w:i:p:o: option
+while getopts s:c:w:i:p:o:h: option
 do
 case "${option}"
 in
@@ -29,6 +24,9 @@ m) calibmarkers=${OPTARG};;
 i) interval=${OPTARG};;
 p) powerfile=${OPTARG};;
 o) outputfilespec=${OPTARG};;
+h)  echo "Usage: $ ./ssfgen.sh [-s spectrumfile] [-c calbrationfile] [-m markers] [-i interval] [-p powerfile] [-o outputfilespec]]"
+    exit
+    ;;
 esac
 done
 
