@@ -1,5 +1,6 @@
 
 //#include <stdio.h>
+#include <sys/select.h>
 #include <stdarg.h> 
 #include <iostream>
 #include <string>
@@ -101,14 +102,25 @@ void err(std::string msg)
 
 std::vector<std::string> getFile(FILE *f)
 {
+printf("enter getFile()...\n");
+	fd_set set;
+	struct timeval timeout;
 	char buffer[256000];
 	std::vector<std::string> lines;
+	
+	//use select() on first read to detect no data at stdin (terminal, not pipe)...
+	FD_ZERO(&set);
+	FD_SET(fileno(f), &set);
+	timeout.tv_sec = 1;
+	timeout.tv_usec = 0;
+	if (select (FD_SETSIZE, &set, NULL, NULL, &timeout) == 0) return lines;
 	fgets(buffer,256000, f);
+	
 	while (!feof(f)) {
 		std::string line = std::string(buffer);
 		line.erase(line.find_last_not_of(" \n\r\t")+1);
 		lines.push_back(line);
-		fgets(buffer,256000, f);
+		if (fgets(buffer,256000, f) == NULL) return lines;
 	}
 	return lines;
 }
@@ -126,6 +138,27 @@ std::vector<ssfdata> getData(std::vector<std::string> lines)
 		d.g = atof(tokens[2].c_str());
 		d.b = atof(tokens[3].c_str());
 		data.push_back(d);
+	}
+	return data;
+}
+
+std::vector<ssfdata> sumData(std::vector<ssfdata> left, std::vector<ssfdata> right)
+{
+	if (left.size() == 0) return right;
+	for (unsigned i=0; i<left.size(); i++) {
+		left[i].r += right[i].r;
+		left[i].g += right[i].g;
+		left[i].b += right[i].b;
+	}
+	return left;
+}
+
+std::vector<ssfdata> divideData(std::vector<ssfdata> data, float divisor)
+{
+	for (unsigned i=0; i<data.size(); i++) {
+		data[i].r /= divisor;
+		data[i].g /= divisor;
+		data[i].b /= divisor;
 	}
 	return data;
 }
@@ -218,7 +251,7 @@ void ssf_channelmaxes(FILE *f)
 	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
 }
 
-void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength)
+void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength, int redx=0, int greenx=0, int bluex=0)
 {
 	FILE *c = fopen(calibrationfile.c_str(), "r");
 	if (c == NULL) err(string_format("wavelengthcallibrate error: wavelength calibration file %s not found.",calibrationfile.c_str()));
@@ -226,6 +259,9 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	fclose(c);
 	std::vector<ssfdata> calibdata = getData(caliblines);
 	std::vector<channeldata> maxes =  channelMaxes(calibdata);
+	if (redx != 0) maxes[2].p = redx;
+	if (greenx != 0) maxes[1].p = greenx;
+	if (bluex != 0)  maxes[0].p = bluex;
 	
 	//put wavelengths in maxes:
 	(redwavelength != 0) ? maxes[2].w = redwavelength : maxes[2].w = 0;
@@ -251,7 +287,6 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	if (redwavelength != 0) specdata[max[2].p].w = redwavelength;
 	if (greenwavelength != 0) specdata[max[1].p].w = greenwavelength;
 	if (bluewavelength != 0) specdata[max[0].p].w = bluewavelength;
-
 
 	//Wavelength Assignment:
 	//1. place wavelengths for each interval between calibration max rgb x-s 
@@ -323,6 +358,14 @@ void ssf_normalize(FILE *f)
 		(*dat).g = (*dat).g / maxval;
 		(*dat).b = (*dat).b / maxval;
 		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
+	}
+}
+
+void ssf_average(FILE *f)
+{
+	std::vector<ssfdata> specdata = getData(getFile(f));
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		printf("%d,%f\n", (int) (*dat).w, ((*dat).r + (*dat).g + (*dat).b) / 3.0 );			
 	}
 }
 
@@ -460,6 +503,31 @@ int main(int argc, char ** argv)
 		if (f == NULL) err(string_format("normalize error: data file not found: %s",argv[2]));
 		ssf_normalize(f);
 		fclose(f);
+	}
+	else if (operation == "averagechannels") {  //produces a singe channel dataset of the r,g,b
+		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err(string_format("average error: data file not found: %s",argv[2]));
+		ssf_average(f);
+		fclose(f);
+	}
+	else if (operation == "averagefiles") { //produces a r,g,b dataset of the average of the input files
+		unsigned count = 0;
+		std::vector<ssfdata> data = getData(getFile(stdin));
+printf("averagefiles: stdin data: %ld\n",data.size());
+		if (data.size() > 0) count++;
+		for (unsigned i = 2; i<argc; i++) {
+			f = fopen(argv[i], "r");
+			if (f) 
+				data = sumData(data, getData(getFile(f)));
+			else
+				err(string_format("averagefiles error: data file not found: %s",argv[i]));
+			fclose(f);
+			count++;
+		}
+		data = divideData(data, count);
+		for (std::vector<ssfdata>::iterator dat = data.begin(); dat !=data.end(); ++dat)
+			printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+		
 	}
 	else if (operation == "intervalize") {
 		std::string range;
