@@ -218,26 +218,34 @@ std::vector<std::string> data_transpose(std::vector<std::string> lines)
 
 std::vector<ssfdata> ssf_wavelengthcalibrate(std::vector<ssfdata> specdata, std::vector<channeldata> markers)
 {
-	//Wavelength Assignment:
-	//1. place marker wavelenghts in data:
+	//1. compute slopes between the markers:
+	for (unsigned i=0; i<markers.size()-1; i++) 
+		markers[i].s = (float) (markers[i+1].w - markers[i].w) / (float) (markers[i+1].p - markers[i].p);
+	markers[markers.size()-1].s = markers[markers.size()-2].s;
+	
+	//2. place marker wavelenghts in data:
 	for (std::vector<channeldata>::iterator mkr = markers.begin(); mkr != markers.end(); ++mkr)
 		specdata[(*mkr).p].w = (*mkr).w;
 
-	//2. place wavelengths for each interval between calibration marker x-s 
+	//3. place wavelengths for each interval between calibration marker x-s 
 	for (unsigned i=0; i<markers.size()-1; i++) {
 		for (unsigned j=markers[i].p; j<markers[i+1].p; j++)
 			specdata[j+1].w = specdata[j].w + markers[i].s;
 	}
 	
-	//3. place wavelengths from the highest marker rgb x to the upper end of the spectrum
+	//4. place wavelengths from the highest marker rgb x to the upper end of the spectrum
 	for (unsigned j=markers[markers.size()-1].p; j<specdata.size()-1; j++)
 		specdata[j+1].w = specdata[j].w + markers[markers.size()-1].s;
 	specdata[specdata.size()-1].w = specdata[specdata.size()-2].w + markers[markers.size()-1].s;
 	
-	//4. place wavelengthsfrom the lowest marker to the lower end of the spectrum
+	//5. place wavelengthsfrom the lowest marker to the lower end of the spectrum
 	for (unsigned j=markers[0].p; j>0; j--)
 		specdata[j-1].w = specdata[j].w - markers[0].s;
 	specdata[0].w - specdata[1].w - markers[0].s;
+	
+	//print debug maxes;
+	//for (std::vector<channeldata>::iterator ch = markers.begin(); ch != markers.end(); ++ch)
+	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 	
 	return specdata;
 }
@@ -276,6 +284,15 @@ void ssf_channelmaxes(FILE *f)
 	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
 }
 
+void ssf_wavelengthcalibrate(FILE *f, std::vector<channeldata> markers)
+{
+	std::vector<ssfdata> specdata = getData(getFile(f));
+	specdata = ssf_wavelengthcalibrate(specdata, markers);
+	
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
+		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+}
+
 
 void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength) //, int redx=0, int greenx=0, int bluex=0)
 {
@@ -300,9 +317,9 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	if (marker.size() < 2) err("wavelengthcalibrate error: need at least two channels");
 
 	//calculate slopes:
-	for (unsigned i=0; i<marker.size()-1; i++) 
-		marker[i].s = (float) (marker[i+1].w - marker[i].w) / (float) (marker[i+1].p - marker[i].p);
-	marker[marker.size()-1].s = marker[marker.size()-2].s;
+	//for (unsigned i=0; i<marker.size()-1; i++) 
+	//	marker[i].s = (float) (marker[i+1].w - marker[i].w) / (float) (marker[i+1].p - marker[i].p);
+	//marker[marker.size()-1].s = marker[marker.size()-2].s;
 
 	std::vector<ssfdata> specdata = getData(getFile(f));
 	
@@ -457,33 +474,66 @@ int main(int argc, char ** argv)
 		ssf_channelmaxes(f);
 		fclose(f);
 	}
-	else if (operation == "wavelengthcalibrate") {
+	else if (operation == "wavelengthcalibrate") { //wavelengthcalibrate [spectrumfile] markerstring [calibrationfile]
+	
+	/*
+	ssftool wavelengthcalibrate spectrumfile markerstring //4, markers are position in 3 (check for '=' in 3)
+	ssftool wavelengthcalibrate spectrumfile markerstring calibrationfile //5, markers are channel maxes in 3
+	| ssftool wavelenghtcalibrate markerstring //3, markers are position in 2
+	| ssftool wavelengthcalibrate markerstring calibrationfile //4, markers are channel maxes in 2 (check for '=' in 2)
+	*/
 		std::string calibfile;
-		std::vector<std::string> wavelength;
-		if (argc == 4) {
-			f = stdin; 
-			calibfile = std::string(argv[2]);
-			wavelength = split(std::string(argv[3]), ",");
+		std::string markerstring;
+		std::vector<std::string> markers;
+		std::vector<channeldata> markerdat;
+		if (argc == 3) {  //| ssftool wavelenghtcalibrate markerstring
+			f = stdin;
+			markerstring = argv[2];
 		}
-		else if (argc == 5) {
+		else if (argc == 4) {
+			if (std::string(argv[2]).find("=") != std::string::npos) {  // | ssftool wavelengthcalibrate markerstring calibrationfile
+				f =  stdin;
+				markerstring = argv[2];
+				calibfile = argv[3];
+			}
+			else { // ssftool wavelengthcalibrate spectrumfile markerstring
+				f = fopen(argv[2], "r");
+				markerstring = argv[3];
+			}
+		}
+		else if (argc == 5) {  //ssftool wavelengthcalibrate spectrumfile markerstring calibrationfile
 			f = fopen(argv[2], "r"); 
-			calibfile = std::string(argv[3]);
-			wavelength = split(std::string(argv[4]), ",");
+			markerstring = argv[3];
+			calibfile = argv[4];
 		}
 		else err(string_format("wavelengthcalibrate error: wrong number of parameters: %d",argc));
 		if (f == NULL) err(string_format("wavelengthcalibrate error: data file not found: %s",argv[2]));
 		
-		//blue=437,green=546,red=611 - debug parameters
-		int redw=0, greenw=0, bluew=0;
-		for (unsigned i=0; i<wavelength.size(); i++) {
-			std::vector<std::string> nameval = split(wavelength[i], "=");
-			if (nameval[0] == "red") redw = atoi(nameval[1].c_str());
-			else if (nameval[0] == "green") greenw = atoi(nameval[1].c_str());
-			else if (nameval[0] == "blue") bluew = atoi(nameval[1].c_str());
-			else err(string_format("wavelengthcalibrage error: bad wavelength parameter",nameval[0].c_str()));
+		markers = split(markerstring, ",");
+		
+		if (markerstring.find("red") != std::string::npos | markerstring.find("green") != std::string::npos | markerstring.find("blue") != std::string::npos) {
+			//blue=437,green=546,red=611 - debug parameters
+			int redw=0, greenw=0, bluew=0;
+			for (unsigned i=0; i<markers.size(); i++) {
+				std::vector<std::string> nameval = split(markers[i], "=");
+				if (nameval[0] == "red") redw = atoi(nameval[1].c_str());
+				else if (nameval[0] == "green") greenw = atoi(nameval[1].c_str());
+				else if (nameval[0] == "blue") bluew = atoi(nameval[1].c_str());
+				else err(string_format("wavelengthcalibrage error: bad marker parameter:",nameval[0].c_str()));
+			}
+			ssf_wavelengthcalibrate(f, calibfile, bluew, greenw, redw);
+		}
+		else { //use max channels for wavelength markers
+			for (unsigned i=0; i<markers.size(); i++) {
+				std::vector<std::string> nameval = split(markers[i], "=");
+				channeldata d;
+				d.p = atoi(nameval[0].c_str());
+				d.w = atoi(nameval[1].c_str());
+				markerdat.push_back(d);
+			}
+			ssf_wavelengthcalibrate(f, markerdat);
 		}
 
-		ssf_wavelengthcalibrate(f, calibfile, bluew, greenw, redw);
 		fclose(f);
 	}
 	else if (operation == "powercalibrate") {

@@ -41,16 +41,22 @@ echo
 
 echo "$ssftool extract $spectrumfile | ssftool transpose..."
 $ssftool extract $spectrumfile | ssftool transpose > _spectrum.csv
+
 echo "$ssftool extract $calibrationfile | ssftool transpose..."
 $ssftool extract $calibrationfile | ssftool transpose > _calibration.csv
-echo "$ssftool wavelengthcalibrate _spectrum.csv _calibration.csv $calibmarkers..."
-$ssftool wavelengthcalibrate _spectrum.csv _calibration.csv $calibmarkers > _wavelength.csv
+
+echo "$ssftool wavelengthcalibrate _spectrum.csv $calibmarkers _calibration.csv ..."
+$ssftool wavelengthcalibrate _spectrum.csv $calibmarkers _calibration.csv > _wavelength.csv
+
 echo "$ssftool intervalize _wavelength.csv $interval..."
 $ssftool intervalize _wavelength.csv $interval > _interval.csv
+
 echo "$ssftool powercalibrate _interval.csv $powerfile..."
 $ssftool powercalibrate _interval.csv $powerfile > _power.csv
+
 echo "$ssftool normalize _power.csv > $outputfilespec..."
 $ssftool normalize _power.csv > $outputfilespec
+
 echo "removing temp files..."
 rm _*
 
