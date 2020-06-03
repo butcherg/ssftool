@@ -369,17 +369,32 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 
 void ssf_normalize(FILE *f)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
-	std::vector<channeldata> max =  channelMaxes(specdata);
-	float maxval = 0.0;
-	for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
-		if ((*ch).v > maxval) maxval = (*ch).v;
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
-		(*dat).r = (*dat).r / maxval;
-		(*dat).g = (*dat).g / maxval;
-		(*dat).b = (*dat).b / maxval;
-		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
+	std::vector<std::string> lines = getFile(f);
+	std::vector<std::string> t = split(lines[0], ",");
+	
+	if (t.size() == 4) { 
+		std::vector<ssfdata> specdata = getData(lines);
+		std::vector<channeldata> max =  channelMaxes(specdata);
+		float maxval = 0.0;
+		for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
+			if ((*ch).v > maxval) maxval = (*ch).v;
+		for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+			(*dat).r = (*dat).r / maxval;
+				(*dat).g = (*dat).g / maxval;
+			(*dat).b = (*dat).b / maxval;
+			printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
+		}
 	}
+	else if (t.size() == 2) {
+		std::map<int, float> powerdata = getPowerData(lines);
+		float maxval = 0.0;
+		for (std::map<int, float>::iterator d = powerdata.begin(); d != powerdata.end(); ++d)
+			if (d->second > maxval) maxval = d->second;
+		for (std::map<int, float>::iterator d = powerdata.begin(); d != powerdata.end(); ++d) {
+			printf("%d,%f\n", d->first, d->second / maxval);			
+		}
+	}
+	else err(string_format("ssf_normalize error: number of columns needs to be either 4 (spectrum data) or 2 (power data)"));
 }
 
 void ssf_average(FILE *f)
@@ -393,13 +408,20 @@ void ssf_average(FILE *f)
 void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 {
 	std::vector<ssfdata> specdata = getData(getFile(f));
-	std::map<int,ssfdata> sd;
-	//ToDo: median of available values at the same wavelength
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) 
-		sd[(int) (*dat).w] = *dat;
-	
-	for (unsigned i = lower; i<=upper; i+=interval)
-		printf("%d,%f,%f,%f\n", i, sd[i].r, sd[i].g, sd[i].b);
+
+	float step = lower;
+	float prev = specdata[0].w;
+	for (unsigned i=1; i<specdata.size(); i++) {
+		if (specdata[i].w > step) {
+			//figure out which is closer, specdata[i-1].w or specdata[i].w, and print it with the step wavelength
+			if ((step - specdata[i-1].w) < (specdata[i].w-step))
+				printf("%0.2f,%f,%f,%f\n",step, specdata[i-1].r, specdata[i-1].g, specdata[i-1].b); 
+			else
+				printf("%0.2f,%f,%f,%f\n",step, specdata[i].r, specdata[i].g, specdata[i].b); 
+			step += interval;
+			if (step > upper) return;
+		}
+	}
 	
 }
 
