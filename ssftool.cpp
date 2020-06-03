@@ -290,7 +290,7 @@ void ssf_wavelengthcalibrate(FILE *f, std::vector<channeldata> markers)
 	specdata = ssf_wavelengthcalibrate(specdata, markers);
 	
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
-		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
 }
 
 
@@ -328,7 +328,7 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 
 	//print production data;
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
-		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
 
 	//print debug data, use in place of 'print production data' above:
 	//for (unsigned i=0; i<specdata.size(); i++)
@@ -363,7 +363,7 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 		(*dat).r /= cab;
 		(*dat).g /= cab;
 		(*dat).b /= cab;
-		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+		printf("%02f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
 	}
 }
 
@@ -378,7 +378,7 @@ void ssf_normalize(FILE *f)
 		(*dat).r = (*dat).r / maxval;
 		(*dat).g = (*dat).g / maxval;
 		(*dat).b = (*dat).b / maxval;
-		printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
+		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
 	}
 }
 
@@ -386,11 +386,11 @@ void ssf_average(FILE *f)
 {
 	std::vector<ssfdata> specdata = getData(getFile(f));
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
-		printf("%d,%f\n", (int) (*dat).w, ((*dat).r + (*dat).g + (*dat).b) / 3.0 );			
+		printf("%0.2f,%f\n", (*dat).w, ((*dat).r + (*dat).g + (*dat).b) / 3.0 );			
 	}
 }
 
-void ssf_intervalize(FILE *f, int lower, int upper, int interval)
+void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 {
 	std::vector<ssfdata> specdata = getData(getFile(f));
 	std::map<int,ssfdata> sd;
@@ -598,9 +598,9 @@ int main(int argc, char ** argv)
 		
 		std::vector<std::string> r = split(range, ",");
 		if (r.size() < 3) err("intervalize error: not enough parameters in the range specification:"+range);
-		int lower = atoi(r[0].c_str());
-		int upper = atoi(r[1].c_str());
-		int interval = atoi(r[2].c_str());
+		int lower = atof(r[0].c_str());
+		int upper = atof(r[1].c_str());
+		int interval = atof(r[2].c_str());
 		
 		ssf_intervalize(f, lower, upper, interval);
 		fclose(f);
