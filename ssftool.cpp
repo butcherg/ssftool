@@ -1,11 +1,18 @@
 
 //#include <stdio.h>
-#include <sys/select.h>
+//#include <sys/select.h>
 #include <stdarg.h> 
 #include <iostream>
 #include <string>
 #include <vector>
 #include <map>
+
+#ifdef WIN32
+#include <windows.h>
+#include <io.h>
+#else
+#include <sys/select.h>
+#endif
 
 
 struct ssfdata {
@@ -102,17 +109,24 @@ void err(std::string msg)
 
 std::vector<std::string> getFile(FILE *f)
 {
-	fd_set set;
-	struct timeval timeout;
 	char buffer[256000];
 	std::vector<std::string> lines;
 	
+#ifdef WIN32
+	HANDLE stdinHandle = (HANDLE)_get_osfhandle(_fileno( f) );
+	stdinHandle = GetStdHandle(STD_INPUT_HANDLE);
+	if (WaitForSingleObject( stdinHandle, 1000 ) == WAIT_TIMEOUT) return lines;
+#else
+	fd_set set;
+	struct timeval timeout;
 	//use select() on first read to detect no data at stdin (terminal, not pipe)...
 	FD_ZERO(&set);
 	FD_SET(fileno(f), &set);
 	timeout.tv_sec = 1;
 	timeout.tv_usec = 0;
 	if (select (FD_SETSIZE, &set, NULL, NULL, &timeout) == 0) return lines;
+#endif
+
 	fgets(buffer,256000, f);
 	
 	while (!feof(f)) {
@@ -121,6 +135,7 @@ std::vector<std::string> getFile(FILE *f)
 		lines.push_back(line);
 		if (fgets(buffer,256000, f) == NULL) return lines;
 	}
+
 	return lines;
 }
 
