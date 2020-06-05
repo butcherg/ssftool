@@ -331,11 +331,6 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	//three is better, puts anchor at a middle marker...
 	if (marker.size() < 2) err("wavelengthcalibrate error: need at least two channels");
 
-	//calculate slopes:
-	//for (unsigned i=0; i<marker.size()-1; i++) 
-	//	marker[i].s = (float) (marker[i+1].w - marker[i].w) / (float) (marker[i+1].p - marker[i].p);
-	//marker[marker.size()-1].s = marker[marker.size()-2].s;
-
 	std::vector<ssfdata> specdata = getData(getFile(f));
 	
 	//do the wavelength assignment:
