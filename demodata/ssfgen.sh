@@ -7,6 +7,7 @@ ssftool=../ssftool
 calibmarkers="blue=437,green=546,red=611"
 interval="400,725,5"
 outputfilespec="bar.csv"
+precision=2
 
 #override defaults with ssfgen.conf
 if test -f "ssfgen.conf"; then
@@ -14,7 +15,7 @@ if test -f "ssfgen.conf"; then
 fi
 
 #override defaults/ssfgen.conf with command line parameters:
-while getopts s:c:w:i:p:o:h: option
+while getopts s:c:w:i:p:o:f:h: option
 do
 case "${option}"
 in
@@ -24,6 +25,7 @@ m) calibmarkers=${OPTARG};;
 i) interval=${OPTARG};;
 p) powerfile=${OPTARG};;
 o) outputfilespec=${OPTARG};;
+f) precision=${OPTARG};;
 h)  echo "Usage: $ ./ssfgen.sh [-s spectrumfile] [-c calbrationfile] [-m markers] [-i interval] [-p powerfile] [-o outputfilespec]]"
     exit
     ;;
@@ -37,6 +39,7 @@ echo "calibmarkers=$calibmarkers"
 echo "interval=$interval"
 echo "powerfile=$powerfile"
 echo "outputfilespec=$outputfilespec"
+echo "precision=$precision"
 echo
 
 echo "$ssftool extract $spectrumfile | ssftool transpose..."
@@ -54,8 +57,12 @@ $ssftool intervalize _wavelength.csv $interval > _interval.csv
 echo "$ssftool powercalibrate _interval.csv $powerfile..."
 $ssftool powercalibrate _interval.csv $powerfile > _power.csv
 
-echo "$ssftool normalize _power.csv > $outputfilespec..."
-$ssftool normalize _power.csv > $outputfilespec
+echo "$ssftool normalize _power.csv..."
+$ssftool normalize _power.csv > _normalized.csv
+
+echo "$ssftool format _normalized.csv $precision> $outputfilespec..."
+$ssftool format _normalized.csv $precision > $outputfilespec
+
 
 echo "removing temp files..."
 rm _*

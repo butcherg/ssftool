@@ -472,6 +472,14 @@ void ssf_dcamprofjson(FILE *f, std::string cameraname)
 	printf("}\n");
 }
 
+void ssf_format(FILE *f, int precision=2)
+{
+	std::vector<ssfdata> specdata = getData(getFile(f));
+	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
+		printf("%d,%0.*f,%0.*f,%0.*f\n", int((*dat).w), precision, (*dat).r, precision,  (*dat).g, precision, (*dat).b);			
+
+}
+
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
 //./ssftool extract DSG_4583-spectrum.csv | ./ssftool transpose | ./ssftool wavelengthcalibrate <(./ssftool extract DSG_4582-calibration.csv | ./ssftool transpose) blue=437,green=546,red=611 | ./ssftool intervalize 400,730,5 | ./ssftool powercalibrate Dedolight_5nm.csv | ./ssftool normalize
 
@@ -653,6 +661,24 @@ int main(int argc, char ** argv)
 		if (f == NULL) err("Error: data file not found.");
 		ssf_dcamprofjson(f, cameraname);
 		fclose(f);
+	}
+	else if (operation == "format") {
+		//if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		int precision = 2;
+		if (argc == 3) {
+			f = stdin; 
+			precision = atoi(argv[2]);
+		}
+		else if (argc == 4) {
+			f = fopen(argv[2], "r"); 
+			if (f == NULL) err(string_format("format error: file not found: %s",argv[2]));
+			precision = atoi(argv[3]);
+		}
+		 else err(string_format("format error: wrong number of parameters: %d", argc));
+
+		if (f == NULL) err(string_format("format error: data file not found: %s",argv[2]));
+		ssf_format(f, precision);
+		fclose(f);	
 	}
 	else printf("%s", string_format("ssf error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
 	
