@@ -487,7 +487,23 @@ int main(int argc, char ** argv)
 {
 	FILE *f;
 
-	if (argc <= 1) err("Usage: ssftool <operation> [<datafile>] [parameters...]"); 
+	if (argc <= 1) {
+		printf("Usage:\n"); 
+		printf("\tssftool list [<datafile>] - prints the data file.\n");
+		printf("\tssftool extract [<datafile>] - extracts data from a rawproc data file.\n");
+		printf("\tssftool transpose [<datafile>] - turns a row-major file into column-major.\n");
+		printf("\tssftool channelmaxes [<datafile>] - calculates the pixel locations of each \n\t\tof the channel maximum values.\n");
+		printf("\tssftool wavelengthcalculate [<datafile>] markerstring [<calibrationfile>] - \n\t\tcalibrate either using a markerstring of \"red=www,green=www,blue=www\" \n\t\tto a calibration file or \"position=wavelength...\"\n");
+		printf("\tssftool powercalibrate [<datafile>] [<calibrationfile]> - divide each value \n\t\tin the datafile by the corresponding value from the calibration file.\n");
+		printf("\tssftool normalize [<datafile>] - normalizes the data to the range 0.0-1.0 \n\t\tbased on the largest channel maximum.\n");
+		printf("\tssftool intervalize <lowerbound>,<upperbound>,<interval> [<datafile>] - collapses \n\t\tthe data to the range specified by lowerbound, upperbound, and interval.\n");
+		printf("\tssftool averagechannels [<datafile>] - averages the r, g, and b values of each \n\t\tline to produce a single value for the line.\n");
+		printf("\tssftool averagechannels [<datafile>][...] - averages the r, g, and b values from \n\t\teach file to form a single r, g, and b for each line.\n"); 
+		printf("\tssftool format [<datafile>] <precision> - formats the w,r,g,b file to integer-ize \n\t\tthe w, and round each r, g, and b to the specified precision.\n"); 
+		printf("\tssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b data \n\t\tthat can be ingested by dcamprof.\n");
+		printf("\n");
+		exit(1);
+	}
 	std::string operation = std::string(argv[1]);
 	
 	if (operation == "list") {
