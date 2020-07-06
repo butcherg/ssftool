@@ -268,11 +268,25 @@ std::vector<ssfdata> ssf_wavelengthcalibrate(std::vector<ssfdata> specdata, std:
 
 // Operations:
 
-void ssf_list(FILE *f)
+void ssf_list(FILE *f, bool wavelengths)
 {
 	std::vector<std::string> lines = getFile(f);
-	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line)
-		printf("%s\n",(*line).c_str());
+	if (wavelengths) {
+		bool first = true;
+		for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
+			std::vector<std::string> v = split(*line, ",");
+			if (first) {
+				printf("%s",v[0].c_str());
+				first = false;
+			}
+			else printf(",%s",v[0].c_str());
+		}
+		printf("\n");
+	}
+	else {
+		for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line)
+			printf("%s\n",(*line).c_str());
+	}
 }
 
 void ssf_extract(FILE *f)
@@ -489,7 +503,7 @@ int main(int argc, char ** argv)
 
 	if (argc <= 1) {
 		printf("Usage:\n"); 
-		printf("\tssftool list [<datafile>] - prints the data file.\n");
+		printf("\tssftool list [<datafile>] ['wavelengths']  - prints the data file.\n\t\t'wavelengths' prints just the wavelenghts as a comma-separated list");
 		printf("\tssftool extract [<datafile>] - extracts data from a rawproc data file.\n");
 		printf("\tssftool transpose [<datafile>] - turns a row-major file into column-major.\n");
 		printf("\tssftool channelmaxes [<datafile>] - calculates the pixel locations of each \n\t\tof the channel maximum values.\n");
@@ -507,9 +521,16 @@ int main(int argc, char ** argv)
 	std::string operation = std::string(argv[1]);
 	
 	if (operation == "list") {
-		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (argc <= 2 || std::string(argv[2]) == "wavelengths") {
+			f = stdin; 
+		}
+		else {
+			f = fopen(argv[2], "r");
+		} 
 		if (f == NULL) err("Error: data file not found.");
-		ssf_list(f);
+		bool w = false;
+		if (std::string(argv[argc-1]) == "wavelengths") w = true; 
+		ssf_list(f, w);
 		fclose(f);
 	}
 	else if (operation == "extract") {
