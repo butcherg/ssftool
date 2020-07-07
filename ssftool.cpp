@@ -231,7 +231,7 @@ std::vector<std::string> data_transpose(std::vector<std::string> lines)
 	return l;
 }
 
-std::vector<ssfdata> ssf_wavelengthcalibrate(std::vector<ssfdata> specdata, std::vector<channeldata> markers)
+std::vector<ssfdata> wavelengthcalibrate(std::vector<ssfdata> specdata, std::vector<channeldata> markers)
 {
 	//1. compute slopes between the markers:
 	for (unsigned i=0; i<markers.size()-1; i++) 
@@ -313,16 +313,17 @@ void ssf_channelmaxes(FILE *f)
 	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
 }
 
+//new routine, for x markers:
 void ssf_wavelengthcalibrate(FILE *f, std::vector<channeldata> markers)
 {
 	std::vector<ssfdata> specdata = getData(getFile(f));
-	specdata = ssf_wavelengthcalibrate(specdata, markers);
+	specdata = wavelengthcalibrate(specdata, markers);
 	
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
 		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
 }
 
-
+//old routine, for channelmax markers:
 void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength) //, int redx=0, int greenx=0, int bluex=0)
 {
 	FILE *c = fopen(calibrationfile.c_str(), "r");
@@ -348,7 +349,7 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	std::vector<ssfdata> specdata = getData(getFile(f));
 	
 	//do the wavelength assignment:
-	specdata = ssf_wavelengthcalibrate(specdata, marker);
+	specdata = wavelengthcalibrate(specdata, marker);
 
 	//print production data;
 	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
@@ -495,26 +496,26 @@ void ssf_format(FILE *f, int precision=2)
 }
 
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
-//./ssftool extract DSG_4583-spectrum.csv | ./ssftool transpose | ./ssftool wavelengthcalibrate <(./ssftool extract DSG_4582-calibration.csv | ./ssftool transpose) blue=437,green=546,red=611 | ./ssftool intervalize 400,730,5 | ./ssftool powercalibrate Dedolight_5nm.csv | ./ssftool normalize
+// $ ssftool extract DSG_4583-spectrum.csv | ssftool transpose | ssftool wavelengthcalibrate blue=437,green=546,red=611 <(ssftool extract DSG_4582-calibration.csv | ssftool transpose)  | ssftool intervalize 400,730,5 | ssftool powercalibrate Dedolight_5nm.csv | ssftool normalize
 
 int main(int argc, char ** argv)
 {
 	FILE *f;
 
 	if (argc <= 1) {
-		printf("Usage:\n"); 
-		printf("\tssftool list [<datafile>] ['wavelengths']  - prints the data file.\n\t\t'wavelengths' prints just the wavelenghts as a comma-separated list");
-		printf("\tssftool extract [<datafile>] - extracts data from a rawproc data file.\n");
-		printf("\tssftool transpose [<datafile>] - turns a row-major file into column-major.\n");
-		printf("\tssftool channelmaxes [<datafile>] - calculates the pixel locations of each \n\t\tof the channel maximum values.\n");
-		printf("\tssftool wavelengthcalculate [<datafile>] markerstring [<calibrationfile>] - \n\t\tcalibrate either using a markerstring of \"red=www,green=www,blue=www\" \n\t\tto a calibration file or \"position=wavelength...\"\n");
-		printf("\tssftool powercalibrate [<datafile>] [<calibrationfile]> - divide each value \n\t\tin the datafile by the corresponding value from the calibration file.\n");
-		printf("\tssftool normalize [<datafile>] - normalizes the data to the range 0.0-1.0 \n\t\tbased on the largest channel maximum.\n");
-		printf("\tssftool intervalize <lowerbound>,<upperbound>,<interval> [<datafile>] - collapses \n\t\tthe data to the range specified by lowerbound, upperbound, and interval.\n");
-		printf("\tssftool averagechannels [<datafile>] - averages the r, g, and b values of each \n\t\tline to produce a single value for the line.\n");
-		printf("\tssftool averagechannels [<datafile>][...] - averages the r, g, and b values from \n\t\teach file to form a single r, g, and b for each line.\n"); 
-		printf("\tssftool format [<datafile>] <precision> - formats the w,r,g,b file to integer-ize \n\t\tthe w, and round each r, g, and b to the specified precision.\n"); 
-		printf("\tssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b data \n\t\tthat can be ingested by dcamprof.\n");
+		printf("Usage:\n\n"); 
+		printf("ssftool list [<datafile>] ['wavelengths']  - prints the data file. \n'wavelengths' prints just the wavelenghts as a comma-separated list\n\n");
+		printf("ssftool extract [<datafile>] - extracts data from a rawproc data file.\n\n");
+		printf("ssftool transpose [<datafile>] - turns a row-major file into column-major.\n\n");
+		printf("ssftool channelmaxes [<datafile>] - calculates the pixel locations of each of \nthe channel maximum values.\n\n");
+		printf("ssftool wavelengthcalculate [<datafile>] markerstring [<calibrationfile>] -  \ncalibrate either using a markerstring of \"red=www,green=www,blue=www\" to a \ncalibration file or \"position=wavelength...\"\n\n");
+		printf("ssftool powercalibrate [<datafile>] [<calibrationfile]> - divide each value in \nthe datafile by the corresponding value from the calibration file.\n\n");
+		printf("ssftool normalize [<datafile>] - normalizes the data to the range 0.0-1.0 based \non the largest channel maximum.\n\n");
+		printf("ssftool intervalize <lowerbound>,<upperbound>,<interval> [<datafile>] - \ncollapses the data to the range specified by lowerbound, upperbound, \nand interval.\n\n");
+		printf("ssftool averagechannels [<datafile>] - averages the r, g, and b values of \neach line to produce a single value for the line.\n\n");
+		printf("ssftool averagechannels [<datafile>][...] - averages the r, g, and b values \nfrom each file to form a single r, g, and b for each line.\n\n"); 
+		printf("ssftool format [<datafile>] <precision> - formats the w,r,g,b file to \ninteger-ize the w, and round each r, g, and b to the specified precision.\n\n"); 
+		printf("ssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b \ndata that can be ingested by dcamprof.\n\n");
 		printf("\n");
 		exit(1);
 	}
