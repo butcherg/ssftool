@@ -15,9 +15,9 @@
 #endif
 
 
-struct ssfdata {
-	float w; 
-	float r, g, b;
+struct ssf_data {
+	float w;
+	std::vector<float> d;
 };
 
 struct channeldata {
@@ -139,44 +139,40 @@ std::vector<std::string> getFile(FILE *f)
 	return lines;
 }
 
-std::vector<ssfdata> getData(std::vector<std::string> lines)
+std::vector<ssf_data> get_Data(std::vector<std::string> lines)
 {
-	std::vector<ssfdata> data;
+	std::vector<ssf_data> data;
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
 		if ((*line)[0] == '#') continue; //ignore comment lines
-		ssfdata d;
+		ssf_data d;
 		std::vector<std::string> tokens = split(*line, ",");
-		if (tokens.size() < 4) err(string_format("getData error: line does not contain sufficient number of values (%s)",(*line).c_str()));
+		if (tokens.size() < 2) err(string_format("get_Data error: line does not contain sufficient number of values (%s)",(*line).c_str()));
 		d.w = atoi(tokens[0].c_str());
-		d.r = atof(tokens[1].c_str());
-		d.g = atof(tokens[2].c_str());
-		d.b = atof(tokens[3].c_str());
+		d.d.push_back(atof(tokens[1].c_str()));
+		if (tokens.size() >= 3) d.d.push_back(atof(tokens[2].c_str()));
+		if (tokens.size() >= 4) d.d.push_back(atof(tokens[3].c_str()));
+
 		data.push_back(d);
 	}
 	return data;
 }
 
-std::vector<ssfdata> sumData(std::vector<ssfdata> left, std::vector<ssfdata> right)
+std::vector<ssf_data> sumData(std::vector<ssf_data> left, std::vector<ssf_data> right)
 {
 	if (left.size() == 0) return right;
-	for (unsigned i=0; i<left.size(); i++) {
-		left[i].r += right[i].r;
-		left[i].g += right[i].g;
-		left[i].b += right[i].b;
-	}
+	for (unsigned i=0; i<left.size(); i++) 
+		left[i].d[i] += right[i].d[i];
 	return left;
 }
 
-std::vector<ssfdata> divideData(std::vector<ssfdata> data, float divisor)
+std::vector<ssf_data> divideData(std::vector<ssf_data> data, float divisor)
 {
-	for (unsigned i=0; i<data.size(); i++) {
-		data[i].r /= divisor;
-		data[i].g /= divisor;
-		data[i].b /= divisor;
-	}
+	for (unsigned i=0; i<data.size(); i++) 
+		data[i].d[i] /= divisor;
 	return data;
 }
 
+//todo: convert to ssf_data, maybe...
 std::map<int, float> getPowerData(std::vector<std::string> lines)
 {
 	std::map<int, float> data;
@@ -192,14 +188,29 @@ std::map<int, float> getPowerData(std::vector<std::string> lines)
 	return data;
 }
 
-std::vector<channeldata> channelMaxes(std::vector<ssfdata> data)
+std::vector<channeldata> channelMaxes(std::vector<ssf_data> data)
 {
 	std::vector<channeldata> max;
 	channeldata rmax = {0,0.0}, gmax= {0,0.0}, bmax= {0,0.0};
 	for (unsigned i=0; i<data.size(); i++) {
-		if (data[i].r > rmax.v) {rmax.v = data[i].r; rmax.p =  i;}
-		if (data[i].g > gmax.v) {gmax.v = data[i].g; gmax.p =  i;}
-		if (data[i].b > bmax.v) {bmax.v = data[i].b; bmax.p =  i;}
+		if (data[i].d.size() >=1) {
+			if (data[i].d[0] > rmax.v) {
+				rmax.v = data[i].d[0]; 
+				rmax.p =  i;
+			}
+		}
+		if (data[i].d.size() >=2) {
+			if (data[i].d[1] > gmax.v) {
+				gmax.v = data[i].d[1]; 
+				gmax.p =  i;
+			}
+		}
+		if (data[i].d.size() >=3) {
+			if (data[i].d[2] > bmax.v) {
+				bmax.v = data[i].d[2]; 
+				bmax.p =  i;
+			}
+		}
 	}
 	max.push_back(bmax);
 	max.push_back(gmax);
@@ -231,7 +242,8 @@ std::vector<std::string> data_transpose(std::vector<std::string> lines)
 	return l;
 }
 
-std::vector<ssfdata> wavelengthcalibrate(std::vector<ssfdata> specdata, std::vector<channeldata> markers)
+//ssf_data'ed
+std::vector<ssf_data> wavelengthcalibrate(std::vector<ssf_data> specdata, std::vector<channeldata> markers)
 {
 	//1. compute slopes between the markers:
 	for (unsigned i=0; i<markers.size()-1; i++) 
@@ -263,6 +275,26 @@ std::vector<ssfdata> wavelengthcalibrate(std::vector<ssfdata> specdata, std::vec
 	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 	
 	return specdata;
+}
+
+void print_ssfdata(std::vector<ssf_data> specdata)
+{
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		printf("%0.2f", (*dat).w);
+		for (unsigned i=0; i< (*dat).d.size(); i++) {
+			printf(",%f", (*dat).d[i]);
+		}
+		printf("\n");
+	}
+}
+
+void print_ssfline(ssf_data l)
+{
+	printf("%0.2f", l.w);
+	for (unsigned i=0; i< l.d.size(); i++) {
+		printf(",%f", l.d[i]);
+	}
+	printf("\n");
 }
 
 
@@ -308,29 +340,30 @@ void ssf_transpose(FILE *f)
 void ssf_channelmaxes(FILE *f)
 {
 	std::vector<std::string> lines = getFile(f);
-	std::vector<ssfdata> data = getData(lines);
+	std::vector<ssf_data> data = get_Data(lines);
 	std::vector<channeldata> max =  channelMaxes(data);
 	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
 }
 
+
+
 //new routine, for x markers:
 void ssf_wavelengthcalibrate(FILE *f, std::vector<channeldata> markers)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
 	specdata = wavelengthcalibrate(specdata, markers);
-	
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
-		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+	print_ssfdata(specdata);
 }
 
 //old routine, for channelmax markers:
+//ssf_data'ed
 void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavelength, int greenwavelength, int redwavelength) //, int redx=0, int greenx=0, int bluex=0)
 {
 	FILE *c = fopen(calibrationfile.c_str(), "r");
-	if (c == NULL) err(string_format("wavelengthcallibrate error: wavelength calibration file %s not found.",calibrationfile.c_str()));
+	if (c == NULL) err(string_format("wavelength_callibrate error: wavelength calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
-	std::vector<ssfdata> calibdata = getData(caliblines);
+	std::vector<ssf_data> calibdata = get_Data(caliblines);
 	std::vector<channeldata> markers =  channelMaxes(calibdata);
 	
 	//put wavelengths in markers:
@@ -346,34 +379,24 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 	//three is better, puts anchor at a middle marker...
 	if (marker.size() < 2) err("wavelengthcalibrate error: need at least two channels");
 
-	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
 	
 	//do the wavelength assignment:
 	specdata = wavelengthcalibrate(specdata, marker);
+	print_ssfdata(specdata);
 
-	//print production data;
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
-		printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
-
-	//print debug data, use in place of 'print production data' above:
-	//for (unsigned i=0; i<specdata.size(); i++)
-	//	printf("%d:%f,%f,%f,%f\n", i, specdata[i].w, specdata[i].r, specdata[i].g, specdata[i].b);
-
-	//print debug maxes;
-	//for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
-	//	printf("p:%d, v:%f  w:%d s:%f\n", (*ch).p, (*ch).v, (int) (*ch).w, (*ch).s); 
 }
 
 void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
 	FILE *c = fopen(calibrationfile.c_str(), "r");
 	if (c == NULL) err(string_format("powercalibrate error: power calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
 	fclose(c);
 	std::map<int, float> calibdata = getPowerData(caliblines);
 
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		float cab;
 		if (calibdata.find((*dat).w) != calibdata.end()) {  //exact match 
 			cab = calibdata[(*dat).w];
@@ -385,54 +408,47 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 			cab = lower->second + (upper->second - lower->second) * mult;
 		}
 		
-		(*dat).r /= cab;
-		(*dat).g /= cab;
-		(*dat).b /= cab;
-		printf("%02f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);
+		for (unsigned i=0; i< (*dat).d.size(); i++)
+			(*dat).d[i] /= cab;
 	}
+	print_ssfdata(specdata);
 }
 
+//ssf_data'ed
 void ssf_normalize(FILE *f)
 {
-	std::vector<std::string> lines = getFile(f);
-	std::vector<std::string> t = split(lines[0], ",");
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	float maxval = 0.0;
+
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
+		for (unsigned i=0; i< (*dat).d.size(); i++)
+			if ((*dat).d[i] > maxval) maxval = (*dat).d[i];
+		
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
+		for (unsigned i=0; i< (*dat).d.size(); i++)
+			(*dat).d[i] /= maxval;
+		
+	print_ssfdata(specdata);
 	
-	if (t.size() == 4) { 
-		std::vector<ssfdata> specdata = getData(lines);
-		std::vector<channeldata> max =  channelMaxes(specdata);
-		float maxval = 0.0;
-		for (std::vector<channeldata>::iterator ch = max.begin(); ch != max.end(); ++ch)
-			if ((*ch).v > maxval) maxval = (*ch).v;
-		for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
-			(*dat).r = (*dat).r / maxval;
-				(*dat).g = (*dat).g / maxval;
-			(*dat).b = (*dat).b / maxval;
-			printf("%0.2f,%f,%f,%f\n", (*dat).w, (*dat).r, (*dat).g, (*dat).b);			
-		}
-	}
-	else if (t.size() == 2) {
-		std::map<int, float> powerdata = getPowerData(lines);
-		float maxval = 0.0;
-		for (std::map<int, float>::iterator d = powerdata.begin(); d != powerdata.end(); ++d)
-			if (d->second > maxval) maxval = d->second;
-		for (std::map<int, float>::iterator d = powerdata.begin(); d != powerdata.end(); ++d) {
-			printf("%d,%f\n", d->first, d->second / maxval);			
-		}
-	}
-	else err(string_format("ssf_normalize error: number of columns needs to be either 4 (spectrum data) or 2 (power data)"));
 }
 
+//ssf_data'ed
 void ssf_average(FILE *f)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
-		printf("%0.2f,%f\n", (*dat).w, ((*dat).r + (*dat).g + (*dat).b) / 3.0 );			
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		float sum = 0.0;
+		for (unsigned i=0; i< (*dat).d.size(); i++)
+			sum += (*dat).d[i];
+		printf("%0.2f,%f\n", (*dat).w, sum / (*dat).d.size() );			
 	}
 }
 
+
+//ssf_data'ed
 void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
 
 	float step = lower;
 	float prev = specdata[0].w;
@@ -440,9 +456,11 @@ void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 		if (specdata[i].w > step) {
 			//figure out which is closer, specdata[i-1].w or specdata[i].w, and print it with the step wavelength
 			if ((step - specdata[i-1].w) < (specdata[i].w-step))
-				printf("%0.2f,%f,%f,%f\n",step, specdata[i-1].r, specdata[i-1].g, specdata[i-1].b); 
+				//printf("%0.2f,%f,%f,%f\n",step, specdata[i-1].r, specdata[i-1].g, specdata[i-1].b); 
+				print_ssfline(specdata[i-1]);
 			else
-				printf("%0.2f,%f,%f,%f\n",step, specdata[i].r, specdata[i].g, specdata[i].b); 
+				//printf("%0.2f,%f,%f,%f\n",step, specdata[i].r, specdata[i].g, specdata[i].b); 
+				print_ssfline(specdata[i]);
 			step += interval;
 			if (step > upper) return;
 		}
@@ -450,15 +468,16 @@ void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 	
 }
 
+//ssf_data'ed
 void ssf_dcamprofjson(FILE *f, std::string cameraname)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
 	std::vector<std::string> w, r, g, b;
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		w.push_back(string_format("%d", (int) (*dat).w));
-		r.push_back(string_format("%f", (*dat).r));
-		g.push_back(string_format("%f", (*dat).g));
-		b.push_back(string_format("%f", (*dat).b));
+		r.push_back(string_format("%f", (*dat).d[0]));
+		g.push_back(string_format("%f", (*dat).d[1]));
+		b.push_back(string_format("%f", (*dat).d[2]));
 	}
 	printf("{\n");
 
@@ -487,12 +506,17 @@ void ssf_dcamprofjson(FILE *f, std::string cameraname)
 	printf("}\n");
 }
 
+//ssf_data'ed
 void ssf_format(FILE *f, int precision=2)
 {
-	std::vector<ssfdata> specdata = getData(getFile(f));
-	for (std::vector<ssfdata>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
-		printf("%d,%0.*f,%0.*f,%0.*f\n", int((*dat).w), precision, (*dat).r, precision,  (*dat).g, precision, (*dat).b);			
-
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
+		printf("%d", int((*dat).w));
+		for (unsigned i=0; i< (*dat).d.size(); i++) {
+			printf(",%0.*f", precision, (*dat).d[i]);
+		}
+		printf("\n");
+	}
 }
 
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
@@ -513,7 +537,7 @@ int main(int argc, char ** argv)
 		printf("ssftool normalize [<datafile>] - normalizes the data to the range 0.0-1.0 based \non the largest channel maximum.\n\n");
 		printf("ssftool intervalize <lowerbound>,<upperbound>,<interval> [<datafile>] - \ncollapses the data to the range specified by lowerbound, upperbound, \nand interval.\n\n");
 		printf("ssftool averagechannels [<datafile>] - averages the r, g, and b values of \neach line to produce a single value for the line.\n\n");
-		printf("ssftool averagechannels [<datafile>][...] - averages the r, g, and b values \nfrom each file to form a single r, g, and b for each line.\n\n"); 
+		printf("ssftool averagefiles [<datafile>][...] - averages the r, g, and b values \nfrom each file to form a single r, g, and b for each line.\n\n"); 
 		printf("ssftool format [<datafile>] <precision> - formats the w,r,g,b file to \ninteger-ize the w, and round each r, g, and b to the specified precision.\n\n"); 
 		printf("ssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b \ndata that can be ingested by dcamprof.\n\n");
 		printf("\n");
@@ -644,21 +668,19 @@ int main(int argc, char ** argv)
 	}
 	else if (operation == "averagefiles") { //produces a r,g,b dataset of the average of the input files
 		unsigned count = 0;
-		std::vector<ssfdata> data = getData(getFile(stdin));
+		std::vector<ssf_data> data = get_Data(getFile(stdin));
 		if (data.size() > 0) count++;
 		for (unsigned i = 2; i<argc; i++) {
 			f = fopen(argv[i], "r");
 			if (f) 
-				data = sumData(data, getData(getFile(f)));
+				data = sumData(data, get_Data(getFile(f)));
 			else
 				err(string_format("averagefiles error: data file not found: %s",argv[i]));
 			fclose(f);
 			count++;
 		}
 		data = divideData(data, count);
-		for (std::vector<ssfdata>::iterator dat = data.begin(); dat !=data.end(); ++dat)
-			printf("%d,%f,%f,%f\n", (int) (*dat).w, (*dat).r, (*dat).g, (*dat).b);
-		
+		print_ssfdata(data);
 	}
 	else if (operation == "intervalize") {
 		std::string range;
