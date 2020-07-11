@@ -450,20 +450,50 @@ void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
 
-	float step = lower;
+	unsigned i = 0;
 	float prev = specdata[0].w;
-	for (unsigned i=1; i<specdata.size(); i++) {
-		if (specdata[i].w > step) {
-			//figure out which is closer, specdata[i-1].w or specdata[i].w, and print it with the step wavelength
-			if ((step - specdata[i-1].w) < (specdata[i].w-step))
-				//printf("%0.2f,%f,%f,%f\n",step, specdata[i-1].r, specdata[i-1].g, specdata[i-1].b); 
-				print_ssfline(specdata[i-1]);
-			else
-				//printf("%0.2f,%f,%f,%f\n",step, specdata[i].r, specdata[i].g, specdata[i].b); 
-				print_ssfline(specdata[i]);
-			step += interval;
-			if (step > upper) return;
+	
+	if (specdata[0].w > lower) err(string_format("intervalize error: data doesn't cover lower bound: %0.2f",specdata[0].w));
+	if (specdata[specdata.size()-1].w < upper) err(string_format("intervalize error: data doesn't cover upper bound: %0.2f",specdata[specdata.size()-1].w));
+
+	for (float step = lower; step <= upper; step+= interval) {
+		while (i < specdata.size()-1 && specdata[i].w < lower) i++; // walk the data up to the lower bound
+
+		if (specdata[i].w == step) { //if the datum is exactly the step, use it and go on to the next step
+			print_ssfline(specdata[i]);
+			i++;
+			continue;
 		}
+		else if (specdata[i].w < step) {
+			while (i < specdata.size()-1 && specdata[i].w < step) i++;
+		}
+
+		ssf_data dat;
+		dat.w = step;
+		float interp;
+		if (i == specdata.size() - 1) { //data is now at its end, need to interpolate with previous data interval and finish
+			interp = (specdata[i].w - specdata[i-1].w) / (specdata[i].w - step);
+			for (unsigned j=0; j<specdata[i].d.size(); j++) 
+				dat.d[j] = specdata[i].d[j]; //nearest neighbor, hack
+				//dat.d[j] = specdata[i].d[j] + (specdata[i].d[j] * interp)... //todo: interpolation
+			print_ssfline(dat);
+			return;
+		}
+		else { //interpolate with the current interval
+			interp = (specdata[i+1].w - specdata[i].w) / (specdata[i].w - step);
+			for (unsigned j=0; j<specdata[i].d.size(); j++) 
+				if (interp > 0.5) //nearest neighbor, hack
+					dat.d.push_back(specdata[i+1].d[j]);
+				else
+					dat.d.push_back(specdata[i].d[j]);
+				//dat.d[j] = specdata[i].d[j]... //todo: interpolation
+			print_ssfline(dat);
+			i++;
+		}
+
+		//else { //walk the data up to where its w is >= the step
+		//	while (i < specdata.size() && specdata[i].w < step) i++;
+		//}
 	}
 	
 }
@@ -517,6 +547,26 @@ void ssf_format(FILE *f, int precision=2)
 		}
 		printf("\n");
 	}
+}
+
+void ssf_smooth(FILE *f, int lookback=2)
+{
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	std::vector<ssf_data> smoothdata;
+	for (unsigned i=0; i<specdata.size(); i++) {
+		int lb;
+		if (i < lookback) lb = i; else lb = lookback;
+		ssf_data s;
+		s.w = specdata[i].w;
+		for (unsigned j=0; j<specdata[i].d.size(); j++) {
+			float sum = 0.0;
+			for (unsigned k=0; k<lb; k++)
+				sum += specdata[i-k].d[j];
+			s.d.push_back(sum / (float) (lb));
+		}
+		smoothdata.push_back(s);
+	}	
+	print_ssfdata(smoothdata);
 }
 
 // here's a ssftool command to process soup-to-nuts, using bash process substitution to input the calibration file to wavelengthcalibrate (Yeow!):
@@ -723,7 +773,6 @@ int main(int argc, char ** argv)
 		fclose(f);
 	}
 	else if (operation == "format") {
-		//if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
 		int precision = 2;
 		if (argc == 3) {
 			f = stdin; 
@@ -738,6 +787,29 @@ int main(int argc, char ** argv)
 
 		if (f == NULL) err(string_format("format error: data file not found: %s",argv[2]));
 		ssf_format(f, precision);
+		fclose(f);	
+	}
+	else if (operation == "smooth") {
+		int lookback = 2;
+		if (argc == 2) { //ssftool smooth
+			f = stdin;
+		}
+		else if (argc == 3) { //ssftool smooth file|lookback
+			f = fopen(argv[2], "r"); 
+			if (f == NULL) { 
+				f = stdin; 
+				lookback = atoi(argv[2]);
+			}
+		}
+		else if (argc == 4) { //ssftool smooth file lookback
+			f = fopen(argv[2], "r"); 
+			if (f == NULL) err(string_format("smooth error: file not found: %s",argv[2]));
+			lookback = atoi(argv[3]);
+		}
+		else err(string_format("smooth error: wrong number of parameters: %d", argc));
+
+		if (f == NULL) err(string_format("smooth error: data file not found: %s",argv[2]));
+		ssf_smooth(f, lookback);
 		fclose(f);	
 	}
 	else printf("%s", string_format("ssf error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
