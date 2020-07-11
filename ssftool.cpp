@@ -789,7 +789,7 @@ int main(int argc, char ** argv)
 		ssf_format(f, precision);
 		fclose(f);	
 	}
-	else if (operation == "smooth") {
+	else if (operation == "smooth") { //todo: add to usage
 		int lookback = 2;
 		if (argc == 2) { //ssftool smooth
 			f = stdin;
