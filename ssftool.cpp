@@ -444,6 +444,18 @@ void ssf_average(FILE *f)
 	}
 }
 
+void ssf_linearpower(float lower, float upper, float interval, float lowval, float hival)
+{
+	float increment = (hival-lowval) / ((upper-lower)/interval);
+	printf("%0.2f,%f\n", lower, lowval);
+	float prev = lowval;
+	for (float step = lower+interval; step < upper; step+= interval) {
+		printf("%0.2f,%f\n", step, prev+increment);
+		prev += increment;
+	}
+	printf("%0.2f,%f\n", upper, hival);
+}
+
 
 //ssf_data'ed
 void ssf_intervalize(FILE *f, float lower, float upper, float interval)
@@ -474,7 +486,7 @@ void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 		if (i == specdata.size() - 1) { //data is now at its end, need to interpolate with previous data interval and finish
 			interp = (specdata[i].w - specdata[i-1].w) / (specdata[i].w - step);
 			for (unsigned j=0; j<specdata[i].d.size(); j++) 
-				dat.d[j] = specdata[i].d[j]; //nearest neighbor, hack
+				dat.d.push_back(specdata[i].d[j]); //nearest neighbor, hack
 				//dat.d[j] = specdata[i].d[j] + (specdata[i].d[j] * interp)... //todo: interpolation
 			print_ssfline(dat);
 			return;
@@ -811,6 +823,21 @@ int main(int argc, char ** argv)
 		if (f == NULL) err(string_format("smooth error: data file not found: %s",argv[2]));
 		ssf_smooth(f, lookback);
 		fclose(f);	
+	}
+	else if (operation == "linearpower") {  //todo: add to usage
+		if (argc == 3) {
+			std::string range = std::string(argv[2]);
+			std::vector<std::string> r = split(range, ",");
+			if (r.size() < 5) err("linearpower error: not enough parameters in the range specification:"+range);
+			float lower = atof(r[0].c_str());
+			float upper = atof(r[1].c_str());
+			float interval = atof(r[2].c_str());
+			float lowval = atof(r[3].c_str());
+			float hival = atof(r[4].c_str());
+		
+			ssf_linearpower(lower, upper, interval, lowval, hival);
+		}
+		else err(string_format("linearpower error: wrong number of parameters: %d", argc));
 	}
 	else printf("%s", string_format("ssf error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
 	
