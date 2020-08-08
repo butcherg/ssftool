@@ -227,7 +227,7 @@ std::vector<std::string> channel_extract(std::vector<std::string> lines)
 	return l;
 }
 
-std::vector<std::string> data_transpose(std::vector<std::string> lines)
+std::vector<std::string> data_transpose_old(std::vector<std::string> lines)
 {
 	std::vector<std::string> l;
 	std::map<std::string, std::vector<std::string>> data;
@@ -239,6 +239,26 @@ std::vector<std::string> data_transpose(std::vector<std::string> lines)
 	}
 	for (unsigned i = 0; i < data["red"].size(); i++)
 		l.push_back(string_format("%d,%s,%s,%s", i, data["red"][i].c_str(), data["green"][i].c_str(), data["blue"][i].c_str())); 
+	return l;
+}
+
+std::vector<std::string> data_transpose(std::vector<std::string> lines)
+{
+	std::vector<std::string> l;
+	std::vector<std::vector<std::string> > data;
+	
+	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
+		std::vector<std::string> linedata = split(*line, ",");
+		data.push_back(linedata);
+	}
+	
+	for (unsigned i = 0; i < data[0].size(); i++) {
+		//l.push_back(data[0][i]);
+		l.push_back(string_format("%d",i));
+		for (unsigned j=0; j<data.size(); j++) {
+			l.back().append("."+data[j][i]);
+		}
+	}
 	return l;
 }
 
