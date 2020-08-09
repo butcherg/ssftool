@@ -5,7 +5,7 @@ set -e
 #defaults:
 ssftool=../ssftool
 calibmarkers="blue=437,green=546,red=611"
-interval="400,725,5"
+interval="400,715,5"
 outputfilespec="bar.csv"
 precision=2
 
@@ -42,11 +42,11 @@ echo "outputfilespec=$outputfilespec"
 echo "precision=$precision"
 echo
 
-echo "$ssftool extract $spectrumfile | ssftool transpose..."
-$ssftool extract $spectrumfile | ssftool transpose > _spectrum.csv
+echo "$ssftool extract $spectrumfile | $ssftool transpose..."
+$ssftool extract $spectrumfile | $ssftool transpose > _spectrum.csv
 
-echo "$ssftool extract $calibrationfile | ssftool transpose..."
-$ssftool extract $calibrationfile | ssftool transpose > _calibration.csv
+echo "$ssftool extract $calibrationfile | $ssftool transpose..."
+$ssftool extract $calibrationfile | $ssftool transpose > _calibration.csv
 
 echo "$ssftool wavelengthcalibrate _spectrum.csv $calibmarkers _calibration.csv ..."
 $ssftool wavelengthcalibrate _spectrum.csv $calibmarkers _calibration.csv > _wavelength.csv
