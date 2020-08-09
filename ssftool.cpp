@@ -222,7 +222,8 @@ std::vector<std::string> channel_extract(std::vector<std::string> lines)
 {
 	std::vector<std::string> l;
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line)
-		if ((*line).find("red") == 0 | (*line).find("green") == 0 | (*line).find("blue") == 0)
+		//if ((*line).find("x,") == 0 | (*line).find("red") == 0 | (*line).find("green") == 0 | (*line).find("blue") == 0)
+		if ((*line).substr(0,1) == "x" | (*line).substr(0,3) == "red" | (*line).substr(0,5) == "green" | (*line).substr(0,4) == "blue")
 			l.push_back(string_format("%s",(*line).c_str()));
 	return l;
 }
@@ -254,7 +255,7 @@ std::vector<std::string> data_transpose(std::vector<std::string> lines)
 	
 	for (unsigned i = 0; i < data[0].size(); i++) {
 		//l.push_back(data[0][i]);
-		l.push_back(string_format("%d",i));
+		//l.push_back(string_format("%d",i));
 		for (unsigned j=0; j<data.size(); j++) {
 			l.back().append("."+data[j][i]);
 		}
