@@ -327,6 +327,7 @@ void print_ssfline(ssf_data l)
 void ssf_list(FILE *f, bool wavelengths)
 {
 	std::vector<std::string> lines = getFile(f);
+	if (lines.size() == 0)  err("list error: no data.");
 	if (wavelengths) {
 		bool first = true;
 		for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
@@ -348,6 +349,7 @@ void ssf_list(FILE *f, bool wavelengths)
 void ssf_extract(FILE *f)
 {
 	std::vector<std::string> lines = getFile(f);
+	if (lines.size() == 0)  err("extract error: no data.");
 	lines = channel_extract(lines);
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line)
 		printf("%s\n",(*line).c_str());
@@ -356,6 +358,7 @@ void ssf_extract(FILE *f)
 void ssf_transpose(FILE *f)
 {
 	std::vector<std::string> lines = getFile(f);
+	if (lines.size() == 0)  err("transpose error: no data.");
 	lines = data_transpose(lines);
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line)
 		printf("%s\n",(*line).c_str());
@@ -364,6 +367,7 @@ void ssf_transpose(FILE *f)
 void ssf_channelmaxes(FILE *f)
 {
 	std::vector<std::string> lines = getFile(f);
+	if (lines.size() == 0)  err("channelmaxes error: no data.");
 	std::vector<ssf_data> data = get_Data(lines);
 	std::vector<channeldata> max =  channelMaxes(data);
 	printf("blue:%f,%d;green:%f,%d;red:%f,%d\n", max[0].v, max[0].p, max[1].v, max[1].p, max[2].v, max[2].p);
@@ -375,6 +379,9 @@ void ssf_channelmaxes(FILE *f)
 void ssf_wavelengthcalibrate(FILE *f, std::vector<channeldata> markers)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("wavelengthcalibrate (markers) error: no data.");
+	
 	specdata = wavelengthcalibrate(specdata, markers);
 	print_ssfdata(specdata);
 }
@@ -401,9 +408,11 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 		if ((*ch).w != 0) marker.push_back(*ch);
 
 	//three is better, puts anchor at a middle marker...
-	if (marker.size() < 2) err("wavelengthcalibrate error: need at least two channels");
+	if (marker.size() < 2) err("wavelengthcalibrate (RGB) error: need at least two channels");
 
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("wavelengthcalibrate error: no data.");
 	
 	//do the wavelength assignment:
 	specdata = wavelengthcalibrate(specdata, marker);
@@ -414,6 +423,9 @@ void ssf_wavelengthcalibrate(FILE *f, std::string calibrationfile, int bluewavel
 void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("powercalibrate error: no data.");
+	
 	FILE *c = fopen(calibrationfile.c_str(), "r");
 	if (c == NULL) err(string_format("powercalibrate error: power calibration file %s not found.",calibrationfile.c_str()));
 	std::vector<std::string> caliblines = getFile(c);
@@ -442,6 +454,9 @@ void ssf_powercalibrate(FILE *f, std::string calibrationfile)
 void ssf_normalize(FILE *f)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("normalize error: no data.");
+	
 	float maxval = 0.0;
 
 	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
@@ -460,6 +475,9 @@ void ssf_normalize(FILE *f)
 void ssf_average(FILE *f)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("average error: no data.");
+	
 	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		float sum = 0.0;
 		for (unsigned i=0; i< (*dat).d.size(); i++)
@@ -485,6 +503,8 @@ void ssf_linearpower(float lower, float upper, float interval, float lowval, flo
 void ssf_intervalize(FILE *f, float lower, float upper, float interval)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("intervalize error: no data.");
 
 	unsigned i = 0;
 	float prev = specdata[0].w;
@@ -539,6 +559,9 @@ void ssf_dcamprofjson(FILE *f, std::string cameraname)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
 	std::vector<std::string> w, r, g, b;
+	
+	if (specdata.size() == 0)  err("dcamprofjson error: no data.");
+	
 	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		w.push_back(string_format("%d", (int) (*dat).w));
 		r.push_back(string_format("%f", (*dat).d[0]));
@@ -576,6 +599,9 @@ void ssf_dcamprofjson(FILE *f, std::string cameraname)
 void ssf_format(FILE *f, int precision=2)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("ssfformat error: no data.");
+	
 	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat) {
 		printf("%d", int((*dat).w));
 		for (unsigned i=0; i< (*dat).d.size(); i++) {
@@ -589,6 +615,9 @@ void ssf_smooth(FILE *f, int lookback=2)
 {
 	std::vector<ssf_data> specdata = get_Data(getFile(f));
 	std::vector<ssf_data> smoothdata;
+	
+	if (specdata.size() == 0)  err("smooth error: no data.");
+	
 	for (unsigned i=0; i<specdata.size(); i++) {
 		int lb;
 		if (i < lookback) lb = i; else lb = lookback;
