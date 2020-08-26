@@ -6,8 +6,8 @@ name=$(basename "$1" .csv)
 read -r -d '' script<<-EOFMarker
 set datafile separator ','
 set terminal png size 640,480
-set output '$1.png'
-set title '$1' noenhanced
+set output '$name.png'
+set title '$name' noenhanced
 unset key
 set xlabel 'wavelength (nm)'
 set linetype 1 lw 2 lc rgb 'red'
