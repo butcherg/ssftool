@@ -40,3 +40,4 @@ fi
 
 echo "$script" > who.gnu
 gnuplot who.gnu
+rm who.gnu
