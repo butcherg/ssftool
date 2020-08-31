@@ -471,6 +471,20 @@ void ssf_normalize(FILE *f)
 	
 }
 
+void ssf_multiply(FILE *f, float m)
+{
+	std::vector<ssf_data> specdata = get_Data(getFile(f));
+	
+	if (specdata.size() == 0)  err("normalize error: no data.");
+		
+	for (std::vector<ssf_data>::iterator dat = specdata.begin(); dat !=specdata.end(); ++dat)
+		for (unsigned i=0; i< (*dat).d.size(); i++)
+			(*dat).d[i] *= m;
+		
+	print_ssfdata(specdata);
+	
+}
+
 //ssf_data'ed
 void ssf_average(FILE *f)
 {
@@ -891,6 +905,19 @@ int main(int argc, char ** argv)
 			ssf_linearpower(lower, upper, interval, lowval, hival);
 		}
 		else err(string_format("linearpower error: wrong number of parameters: %d", argc));
+	}
+	else if (operation == "multiply") {  //todo: add to usage
+		float m = 1.0;
+		if (argc == 3) { //ssftool multiply <nbr> 
+			f = stdin;
+			m = atof(argv[2]);
+		}
+		else if (argc == 4) {
+			f = fopen(argv[2], "r"); 
+			m = atof(argv[3]);
+		}
+		else err(string_format("multiply error: wrong number of parameters: %d", argc));
+		ssf_multiply(f,m);
 	}
 	else printf("%s", string_format("ssf error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
 	
