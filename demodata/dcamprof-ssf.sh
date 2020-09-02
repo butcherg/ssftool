@@ -41,6 +41,6 @@ echo
 echo "dcamprof make-profile $reports -c $@ _target.ti3 _profile.json"
 dcamprof make-profile $reports -c $@ _target.ti3 _profile.json
 echo
-echo "dcamprof make-icc -n "\"$description\"" -c "\"$copyright\"" -p xyzlut _profile.json $fbname.icc"
-dcamprof make-icc -n "\"$description\"" -c "\"$copyright\"" -p xyzlut _profile.json $fbname.icc
+echo "dcamprof make-icc -n \"$description\" -c \"$copyright\" -p xyzlut _profile.json $fbname.icc"
+dcamprof make-icc -n "$description" -c "$copyright" -p xyzlut _profile.json $fbname.icc
 rm _*
