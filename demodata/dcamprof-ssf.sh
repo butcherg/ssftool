@@ -1,6 +1,7 @@
 #!/bin/bash
 
 if [[ $# == 0 ]]; then
+	echo "dcamprof-ssf.sh [-cnr] <ssf.json>
 	echo "Options:"
 	echo "	-c <copyright>   - inserts copyright statement in the icc file"
 	echo "	-n <description> - inserts description in the icc file"
