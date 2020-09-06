@@ -668,6 +668,9 @@ int main(int argc, char ** argv)
 		printf("ssftool averagechannels [<datafile>] - averages the r, g, and b values of \neach line to produce a single value for the line.\n\n");
 		printf("ssftool averagefiles [<datafile>][...] - averages the r, g, and b values \nfrom each file to form a single r, g, and b for each line.\n\n"); 
 		printf("ssftool format [<datafile>] <precision> - formats the w,r,g,b file to \ninteger-ize the w, and round each r, g, and b to the specified precision.\n\n"); 
+		printf("ssftool [smooth <datafile>] - applies a moving average smoothing to the data.\n\n");
+		printf("ssftool linearpower <lower,upper,interval,lowvalue,highvalue> - builds a \ndataset that starts with lowvalue, then proceeds \nto the highvalue over the lower-to-upper interval in the specified interval.\n\n");
+		printf("ssftool multiply <number> - multiplies each data value by the specified number.\n\n");
 		printf("ssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b \ndata that can be ingested by dcamprof.\n\n");
 		printf("\n");
 		exit(1);
