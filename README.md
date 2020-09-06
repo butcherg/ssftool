@@ -37,27 +37,27 @@ $ ssftool extract DSG_4583-spectrum.csv | ssftool transpose | ssftool wavelength
 The general format of a ssftool command is:
 
 ```bash
-$ ssftool <operator> [datafile] [parameters...]
+$ ssftool \<operator> [datafile] [parameters...]
 ```
 Each invocation expects for input either a file or standard input (stdin), and outputs to stdout. Using ssftool can be organized as separate invocations where output is piped to intermediate files, or a single command line can be strung together piping the output from one to the input of the next as in the above example.  The expected data format is comma-separated values; piping to a .csv file makes it convenient to open the file with a spreadsheet program like LibreCalc.
 
 The following operators are supported:
 
-- ssftool list [<datafile>] ['wavelengths']  - prints the data file. 'wavelengths' prints just the wavelenghts as a comma-separated list
-- ssftool extract [<datafile>] - extracts data from a rawproc data file.
-- ssftool transpose [<datafile>] - turns a row-major file into column-major.
-- ssftool channelmaxes [<datafile>] - calculates the pixel locations of each of the channel maximum values.
-- ssftool wavelengthcalculate [<datafile>] markerstring [<calibrationfile>] -  calibrate either using a markerstring of \"red=www,green=www,blue=www\" to a calibration file or \"position=wavelength...\"
-- ssftool powercalibrate [<datafile>] [<calibrationfile]> - divide each value in the datafile by the corresponding value from the calibration file.
-- ssftool normalize [<datafile>] - normalizes the data to the range 0.0-1.0 based on the largest channel maximum.
-- ssftool intervalize <lowerbound>,<upperbound>,<interval> [<datafile>] - collapses the data to the range specified by lowerbound, upperbound, and interval.
-- ssftool averagechannels [<datafile>] - averages the r, g, and b values of each line to produce a single value for the line.
-- ssftool averagefiles [<datafile>][...] - averages the r, g, and b values from each file to form a single r, g, and b for each line. 
-- ssftool format [<datafile>] <precision> - formats the w,r,g,b file to integer-ize the w, and round each r, g, and b to the specified precision. 
-- ssftool [smooth <datafile>] - applies a moving average smoothing to the data.
-- ssftool linearpower <lower,upper,interval,lowvalue,highvalue> - builds a dataset that starts with lowvalue, then proceeds to the highvalue over the lower-to-upper interval in the specified interval.
-- ssftool multiply <number> - multiplies each data value by the specified number.
-- ssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b data that can be ingested by dcamprof.
+- ssftool list [\<datafile\>] ['wavelengths']  - prints the data file. 'wavelengths' prints just the wavelenghts as a comma-separated list
+- ssftool extract [\<datafile\>] - extracts data from a rawproc data file.
+- ssftool transpose [\<datafile\>] - turns a row-major file into column-major.
+- ssftool channelmaxes [\<datafile\>] - calculates the pixel locations of each of the channel maximum values.
+- ssftool wavelengthcalculate [\<datafile>] markerstring [\<calibrationfile\>] -  calibrate either using a markerstring of \"red=www,green=www,blue=www\" to a calibration file or \"position=wavelength...\"
+- ssftool powercalibrate [\<datafile>] [\<calibrationfile\>] - divide each value in the datafile by the corresponding value from the calibration file.
+- ssftool normalize [\<datafile\>] - normalizes the data to the range 0.0-1.0 based on the largest channel maximum.
+- ssftool intervalize \<lowerbound\>,<upperbound\>,<interval\> [\<datafile\>] - collapses the data to the range specified by lowerbound, upperbound, and interval.
+- ssftool averagechannels [\<datafile\>] - averages the r, g, and b values of each line to produce a single value for the line.
+- ssftool averagefiles [\<datafile\>][...] - averages the r, g, and b values from each file to form a single r, g, and b for each line. 
+- ssftool format [\<datafile>] \<precision\> - formats the w,r,g,b file to integer-ize the w, and round each r, g, and b to the specified precision. 
+- ssftool [smooth \<datafile>] - applies a moving average smoothing to the data.
+- ssftool linearpower \<lower,upper,interval,lowvalue,highvalue\> - builds a dataset that starts with lowvalue, then proceeds to the highvalue over the lower-to-upper interval in the specified interval.
+- ssftool multiply \<number\> - multiplies each data value by the specified number.
+- ssftool dcamprofjson [\<datafile\>] - produces a JSON format from the w,r,g,b data that can be ingested by dcamprof.
 
 ## Building ssftool
 
