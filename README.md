@@ -54,9 +54,9 @@ The following operators are supported:
 - ssftool averagechannels [\<datafile\>] - averages the r, g, and b values of each line to produce a single value for the line.
 - ssftool averagefiles [\<datafile\>][...] - averages the r, g, and b values from each file to form a single r, g, and b for each line. 
 - ssftool format [\<datafile>] \<precision\> - formats the w,r,g,b file to integer-ize the w, and round each r, g, and b to the specified precision. 
-- ssftool [smooth \<datafile>] - applies a moving average smoothing to the data.
+- ssftool smooth [\<datafile>] - applies a moving average smoothing to the data.
 - ssftool linearpower \<lower,upper,interval,lowvalue,highvalue\> - builds a dataset that starts with lowvalue, then proceeds to the highvalue over the lower-to-upper interval in the specified interval.
-- ssftool multiply \<number\> - multiplies each data value by the specified number.
+- ssftool multiply [\<datafile>] \<number\> - multiplies each data value by the specified number.
 - ssftool dcamprofjson [\<datafile\>] - produces a JSON format from the w,r,g,b data that can be ingested by dcamprof.
 
 ## Building ssftool
