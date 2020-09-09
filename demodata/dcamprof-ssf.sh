@@ -1,13 +1,17 @@
 #!/bin/bash
 
 if [[ $# == 0 ]]; then
-	echo "dcamprof-ssf.sh [-cnr] <ssf.json>"
+	echo "dcamprof-ssf.sh [-options] <ssf.json>"
 	echo "Options:"
-	echo "	-c <copyright>   - inserts copyright statement in the icc file"
-	echo "	-n <description> - inserts description in the icc file"
-	echo "	-r               - enables report generation for dcamprof make-profile"
-	echo "  -s <spectra>     - uses the specified spectra (default: cc24)"
-	echo "  -f <filespec>	 - specifies a filespec to use for the product filenames instead of the input filespec"
+	echo "  -c <copyright>   - inserts copyright statement in the icc file"
+	echo "  -n <description> - inserts description in the icc file"
+	echo "  -r               - enables report generation for dcamprof make-profile"
+	echo "  -s <spectra>     - uses the specified spectra, choose from cc24," 
+	echo "                     kuopio-natural, munsell, or munsell-bright"
+	echo "                     (default: cc24)"
+	echo "  -f <filespec>    - specifies a filespec to use for the product "
+	echo "                     filenames instead of the input filespec"
+	echo "  -l               - log dcamprof output to filespec.log"
 	exit
 fi
 
@@ -15,25 +19,23 @@ set -e
 
 description='(none)'
 copyright='(none)'
-refspectra='cc24'
+spectra='cc24'
 
 #load configuration file, if present:
 if test -f "dcamprof-ssf.conf"; then
         source dcamprof-ssf.conf
 fi
 
-while getopts n:c:h:f:r option
+while getopts n:c:f:rl option
 do
 case "${option}"
 in
 n) description=${OPTARG};;
 c) copyright=${OPTARG};;
-h)  echo "Usage: $ ./dcamprof-ssf.sh [-n cameraname] [-c copyright] <jsonfile>.json"
-    exit
-    ;;
-r) reportflag="-r";;
-s) refspectra=${OPTARG};;
+r) reportflag='-r';;
+s) spectra=${OPTARG};;
 f) fbaltname=${OPTARG};;
+l) logredirect='-l';;
 esac
 done
 shift $(($OPTIND -1))
@@ -43,19 +45,29 @@ if ! [[ $@ =~ \.json$ ]]; then
 	exit
 fi
 
-if [ -z ${fbaltname+x} ]; then
-	fbname=$(basename "$@" '.json')
-else
+if [ -n "$fbaltname" ]; then
 	fbname=$fbaltname
+else
+	fbname=$(basename "$@" '.json')
 fi
 
-if [ -z ${reportflag+x} ]; then
+if [ -n "$reportflag" ]; then
 	reportflag="-r $fbname-reports"
 fi
 
+if [ -n "$logredirect" ]; then
+	#logredirect="&>> $fbname-dcamprof.log" # 2>&1...
+	exec 2> $fbname-dcamprof.log
+fi
+
+echo
+echo "#Configuration variables:"
+echo "description=\"$description\""
+echo "copyright=\"$copyright\""
+echo "spectra=$spectra"
 echo
 echo "dcamprof make-target -c $@ -p $refspectra _target.ti3"
-dcamprof make-target -c $@ -p $refspectra _target.ti3
+dcamprof make-target -c $@ -p $spectra _target.ti3
 echo
 echo "dcamprof make-profile $reportflag $fbname-reports  -c $@ _target.ti3 _profile.json"
 dcamprof make-profile $reportflag -c $@ _target.ti3 _profile.json
@@ -63,3 +75,4 @@ echo
 echo "dcamprof make-icc -n \"$description\" -c \"$copyright\" -p xyzlut _profile.json $fbname.icc"
 dcamprof make-icc -n "$description" -c "$copyright" -p xyzlut _profile.json $fbname.icc
 rm _*
+echo $logredirect
