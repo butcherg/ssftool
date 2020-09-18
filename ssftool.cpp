@@ -107,6 +107,8 @@ void err(std::string msg)
 	exit(1);
 }
 
+
+
 std::vector<std::string> getFile(FILE *f)
 {
 	char buffer[256000];
@@ -137,6 +139,21 @@ std::vector<std::string> getFile(FILE *f)
 	}
 
 	return lines;
+}
+
+void getMetadata(FILE *f)
+{
+	std::vector<std::string> lines = getFile(f);
+	
+	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
+		if ((*line)[0] == '#') {
+			(*line).erase(0,1);
+			if ((*line).find(':') != std::string::npos) {
+				std::vector<std::string> nameval = split(*line, ":");
+				printf("%s=\"%s\"\n",nameval[0].c_str(), nameval[1].c_str());
+			}
+		}
+	}	
 }
 
 std::vector<ssf_data> get_Data(std::vector<std::string> lines)
@@ -672,6 +689,7 @@ int main(int argc, char ** argv)
 		printf("ssftool linearpower <lower,upper,interval,lowvalue,highvalue> - builds a \ndataset that starts with lowvalue, then proceeds \nto the highvalue over the lower-to-upper interval in the specified interval.\n\n");
 		printf("ssftool multiply <number> - multiplies each data value by the specified number.\n\n");
 		printf("ssftool dcamprofjson [<datafile>] - produces a JSON format from the w,r,g,b \ndata that can be ingested by dcamprof.\n\n");
+		printf("ssftool metadata <datafile> - prints name=val pairs from comments formatted \n'#name=val'.  Use in scripts as 'eval export `ssftool metadata <ssffile>`'\n\n");
 		printf("\n");
 		exit(1);
 	}
@@ -921,6 +939,12 @@ int main(int argc, char ** argv)
 		}
 		else err(string_format("multiply error: wrong number of parameters: %d", argc));
 		ssf_multiply(f,m);
+	}
+	else if (operation == "metadata") { 
+		if (argc <= 2) f = stdin; else f = fopen(argv[2], "r"); 
+		if (f == NULL) err(string_format("metadata error: data file not found: %s",argv[2]));
+		getMetadata(f);
+		fclose(f);
 	}
 	else printf("%s", string_format("ssf error: unrecognized operation: %s.\n",operation.c_str()).c_str()); fflush(stdout);
 	
