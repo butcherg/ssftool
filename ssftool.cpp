@@ -149,7 +149,7 @@ void getMetadata(FILE *f)
 		if ((*line)[0] == '#') {
 			(*line).erase(0,1);
 			if ((*line).find(':') != std::string::npos) {
-				std::vector<std::string> nameval = split(*line, ":");
+				std::vector<std::string> nameval = bifurcate(*line, ':');
 				printf("%s=\"%s\"\n",nameval[0].c_str(), nameval[1].c_str());
 			}
 		}
