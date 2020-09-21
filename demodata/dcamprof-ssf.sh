@@ -75,4 +75,4 @@ echo
 echo "dcamprof make-icc -n \"$description\" -c \"$copyright\" -p xyzlut _profile.json $fbname.icc"
 dcamprof make-icc -n "$description" -c "$copyright" -p xyzlut _profile.json $fbname.icc
 rm _*
-echo $logredirect
+
