@@ -12,6 +12,7 @@ if [[ $# == 0 ]]; then
 	echo "  -f <filespec>    - specifies a filespec to use for the product "
 	echo "                     filenames instead of the input filespec"
 	echo "  -l               - log dcamprof output to filespec.log"
+	echo "  -t xyzlut|matrix    - make lut or matrix profile, default=lut"
 	exit
 fi
 
@@ -20,13 +21,14 @@ set -e
 description='(none)'
 copyright='(none)'
 spectra='cc24'
+profiletype='-p xyzlut'
 
 #load configuration file, if present:
 if test -f "dcamprof-ssf.conf"; then
         source dcamprof-ssf.conf
 fi
 
-while getopts n:c:f:rl option
+while getopts n:c:f:t:rl option
 do
 case "${option}"
 in
@@ -36,6 +38,7 @@ r) reportflag='-r';;
 s) spectra=${OPTARG};;
 f) fbaltname=${OPTARG};;
 l) logredirect='-l';;
+t) profiletype="-p ${OPTARG}";;
 esac
 done
 shift $(($OPTIND -1))
@@ -65,6 +68,7 @@ echo "#Configuration variables:"
 echo "description=\"$description\""
 echo "copyright=\"$copyright\""
 echo "spectra=$spectra"
+echo "profiletype=$profiletype"
 echo
 echo "dcamprof make-target -c $@ -p $refspectra _target.ti3"
 dcamprof make-target -c $@ -p $spectra _target.ti3
@@ -72,7 +76,7 @@ echo
 echo "dcamprof make-profile $reportflag $fbname-reports  -c $@ _target.ti3 _profile.json"
 dcamprof make-profile $reportflag -c $@ _target.ti3 _profile.json
 echo
-echo "dcamprof make-icc -n \"$description\" -c \"$copyright\" -p xyzlut _profile.json $fbname.icc"
-dcamprof make-icc -n "$description" -c "$copyright" -p xyzlut _profile.json $fbname.icc
+echo "dcamprof make-icc -n \"$description\" -c \"$copyright\" $profiletype _profile.json $fbname.icc"
+dcamprof make-icc -n "$description" -c "$copyright" $profiletype _profile.json $fbname.icc
 rm _*
 
