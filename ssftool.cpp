@@ -678,10 +678,10 @@ int main(int argc, char ** argv)
 		printf("ssftool extract [<datafile>] - extracts data from a rawproc data file.\n\n");
 		printf("ssftool transpose [<datafile>] - turns a row-major file into column-major.\n\n");
 		printf("ssftool channelmaxes [<datafile>] - calculates the pixel locations of each of \nthe channel maximum values.\n\n");
-		printf("ssftool wavelengthcalculate [<datafile>] markerstring [<calibrationfile>] -  \ncalibrate either using a markerstring of \"red=www,green=www,blue=www\" to a \ncalibration file or \"position=wavelength...\"\n\n");
+		printf("ssftool wavelengthcalibrate [<datafile>] markerstring [<calibrationfile>] -  \ncalibrate either using a markerstring of \"red=www,green=www,blue=www\" to a \ncalibration file or \"position=wavelength...\"\n\n");
 		printf("ssftool powercalibrate [<datafile>] [<calibrationfile]> - divide each value in \nthe datafile by the corresponding value from the calibration file.\n\n");
 		printf("ssftool normalize [<datafile>] - normalizes the data to the range 0.0-1.0 based \non the largest channel maximum.\n\n");
-		printf("ssftool intervalize <lowerbound>,<upperbound>,<interval> [<datafile>] - \ncollapses the data to the range specified by lowerbound, upperbound, \nand interval.\n\n");
+		printf("ssftool intervalize [<datafile>] <lowerbound>,<upperbound>,<interval> [<datafile>] - \ncollapses the data to the range specified by lowerbound, upperbound, \nand interval.\n\n");
 		printf("ssftool averagechannels [<datafile>] - averages the r, g, and b values of \neach line to produce a single value for the line.\n\n");
 		printf("ssftool averagefiles [<datafile>][...] - averages the r, g, and b values \nfrom each file to form a single r, g, and b for each line.\n\n"); 
 		printf("ssftool format [<datafile>] <precision> - formats the w,r,g,b file to \ninteger-ize the w, and round each r, g, and b to the specified precision.\n\n"); 

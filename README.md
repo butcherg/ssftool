@@ -47,10 +47,10 @@ The following operators are supported:
 - ssftool extract [\<datafile\>] - extracts data from a rawproc data file.
 - ssftool transpose [\<datafile\>] - turns a row-major file into column-major.
 - ssftool channelmaxes [\<datafile\>] - calculates the pixel locations of each of the channel maximum values.
-- ssftool wavelengthcalculate [\<datafile>] markerstring [\<calibrationfile\>] -  calibrate either using a markerstring of \"red=www,green=www,blue=www\" to a calibration file or \"position=wavelength...\"
+- ssftool wavelengthcalibrate [\<datafile>] markerstring [\<calibrationfile\>] -  calibrate either using a markerstring of \"red=www,green=www,blue=www\" to a calibration file or \"position=wavelength...\"
 - ssftool powercalibrate [\<datafile>] [\<calibrationfile\>] - divide each value in the datafile by the corresponding value from the calibration file.
 - ssftool normalize [\<datafile\>] - normalizes the data to the range 0.0-1.0 based on the largest channel maximum.
-- ssftool intervalize \<lowerbound\>,<upperbound\>,<interval\> [\<datafile\>] - collapses the data to the range specified by lowerbound, upperbound, and interval.
+- ssftool intervalize [\<datafile\>] \<lowerbound\>,<upperbound\>,<interval\> [\<datafile\>] - collapses the data to the range specified by lowerbound, upperbound, and interval.
 - ssftool averagechannels [\<datafile\>] - averages the r, g, and b values of each line to produce a single value for the line.
 - ssftool averagefiles [\<datafile\>][...] - averages the r, g, and b values from each file to form a single r, g, and b for each line. 
 - ssftool format [\<datafile>] \<precision\> - formats the w,r,g,b file to integer-ize the w, and round each r, g, and b to the specified precision. 
