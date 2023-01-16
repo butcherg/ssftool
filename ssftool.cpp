@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <algorithm>
 
 #ifdef WIN32
 #include <windows.h>
@@ -132,7 +133,14 @@ std::vector<std::string> getFile(FILE *f)
 	fgets(buffer,256000, f);
 	
 	while (!feof(f)) {
-		std::string line = std::string(buffer);
+		std::vector<std::string> l = bifurcate(std::string(buffer), '#');
+		std::string line = l[0];
+		if (line.length() <= 0) {
+			if (fgets(buffer,256000, f) == NULL) return lines;
+			continue;
+		}
+		std::replace( line.begin(), line.end(), ' ', ','); //space-separated 
+		std::replace( line.begin(), line.end(), '\t', ','); //tab-separated 
 		line.erase(line.find_last_not_of(" \n\r\t")+1);
 		lines.push_back(line);
 		if (fgets(buffer,256000, f) == NULL) return lines;
@@ -161,6 +169,7 @@ std::vector<ssf_data> get_Data(std::vector<std::string> lines)
 	std::vector<ssf_data> data;
 	for (std::vector<std::string>::iterator line = lines.begin(); line !=lines.end(); ++line) {
 		if ((*line)[0] == '#') continue; //ignore comment lines
+		if ((*line).length() == 0) continue; //ignore blank lines, usually at the end of the file
 		ssf_data d;
 		std::vector<std::string> tokens = split(*line, ",");
 		if (tokens.size() < 2) err(string_format("get_Data error: line does not contain sufficient number of values (%s)",(*line).c_str()));
